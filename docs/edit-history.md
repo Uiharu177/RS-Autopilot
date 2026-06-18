@@ -2,6 +2,12 @@
 
 ## 2026-06
 
+### 06-18
+
+- **WebSocket 初始日志修复**：`construct_initial()` 优先从内存 `log_lines`（已排除 `skip_ws` 消息）取历史，避免启动横幅被重复推送到前端；前端增加批量/单行区分，重连时不再重复追加历史日志
+- **脚本安全加固**：`start.bat` 窗口标题改为精确匹配，端口清理增加 `tasklist` 进程身份验证；`stop.bat` 端口匹配改为 `/C:":5000 "` 精确匹配避免误杀；统一加 `chcp 65001` 解决中文乱码
+- **README 部署流程修正**：调整为先启动后配置的顺序，操作描述对齐 UI 文案
+
 ### 设备层
 
 - **NEMU 连接分段化**：`connect()` 只获取 IPC 连接（connect_id），display_id 首次截图/触控时懒加载。`check_status()` 只检查 connect_id > 0
