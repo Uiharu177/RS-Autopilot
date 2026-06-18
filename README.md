@@ -15,7 +15,7 @@
 >
 > 继续使用即代表你同意以上条款。
 
-参考项目：[Auto_Resonance](https://github.com/Night-stars-1/Auto_Resonance)
+参考项目：[Auto_Resonance](https://github.com/Night-stars-1/Auto_Resonance) · [mower-ng](https://git.zhaozuohong.vip/mower-ng)
 
 ---
 
