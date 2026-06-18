@@ -74,7 +74,7 @@
 pip install -e .
 
 # 2. 配置模拟器
-#    打开设备配置页面 -> 扫描模拟器 -> 使用此设备
+#    打开「设备配置」页面 → 点击「扫描」→ 在列表中找到模拟器，点击「使用此设备」
 #    或手动复制 config/app.example.json 为 config/app.json 填写设备信息
 
 # 3. 启动
@@ -87,7 +87,7 @@ resonance serve              # 或仅启动后端 API
 > - `start.bat` 不需要先 `pip install`，它直接用 `python cli.py serve` 启动
 > - `start.bat` 会自动执行 `npm install` 安装前端依赖（如果还没装过）
 > - `resonance serve` 只启动后端 API（端口 5000），不含前端界面
-> - 模拟器配置也可以通过浏览器操作：`start.bat` 启动后打开 `http://127.0.0.1:5173` 在网页里配置
+> - 模拟器配置也可以通过浏览器操作：`start.bat` 启动后打开 `http://127.0.0.1:5173`，进入「设备配置」页面配置
 
 ## CLI 命令
 
