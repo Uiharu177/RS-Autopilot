@@ -1,0 +1,36 @@
+[project]
+name = "RS-Autopilot"
+version = "beta0.1"
+description = "雷索纳斯 (Resonance Solstice / HeiYue) game automation tool - Trade route solver"
+license = "MIT"
+requires-python = "<3.13,>=3.11"
+dependencies = [
+    "Pillow==10.3.0",
+    "loguru==0.7.2",
+    "numpy==1.26.4",
+    "opencv-python==4.9.0.80",
+    "orjson>=3.10.0",
+    "pydantic>=2.6.4",
+    "watchdog>=4.0.0",
+    "adb-shell>=0.4.4",
+    "onnxocr-ppocrv4>=0.0.5",
+    "requests>=2.32.4",
+    "psutil>=7.0.0",
+    "onnxruntime>=1.22.1",
+    "flask>=3.0.0",
+    "flask-cors>=4.0.0",
+    "flask-sock>=0.3.1",
+    "simple-websocket>=1.1.0",
+    "networkx>=3.2.0",
+    "pyyaml>=6.0"
+]
+
+[project.optional-dependencies]
+scrcpy = ["av>=12.0.0"]
+
+[project.scripts]
+resonance = "cli:main"
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"

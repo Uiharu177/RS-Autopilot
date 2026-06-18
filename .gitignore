@@ -1,0 +1,38 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+
+# Logs
+logs/
+*.log
+
+# Config (user-specific, contains device paths & ports)
+config/app.json
+config/config.json
+
+# Environment
+.env
+.venv/
+venv/
+
+# Temp
+temp/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Frontend
+web/node_modules/
+web/dist/
+web/.vite/

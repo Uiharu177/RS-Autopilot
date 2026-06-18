@@ -1,0 +1,1894 @@
+{
+    "7号自由港": [
+        {
+            "buy_num": 0.0,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.1,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.2,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.3,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.4,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.5,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.6,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.7,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.8,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 0.9,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 1.0,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.1,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.2,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.3,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.4,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.5,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.6,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.7,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.8,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 1.9,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 2.0,
+            "revenue": 0.02
+        }
+    ],
+    "云岫桥基地": [
+        {
+            "buy_num": 0.0,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.1,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.2,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.30000000000000004,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.4,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.5,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.6000000000000001,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.7000000000000001,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.8,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 0.9,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 1.0,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.1,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.2000000000000002,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.3,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.4000000000000001,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.5,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.6,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.7000000000000002,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.8,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 1.9000000000000001,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 2.0,
+            "revenue": 0.05
+        }
+    ],
+    "修格里城": [
+        {
+            "buy_num": 0.0,
+            "revenue": 0.1
+        },
+        {
+            "buy_num": 0.1,
+            "revenue": 0.1
+        },
+        {
+            "buy_num": 0.2,
+            "revenue": 0.095
+        },
+        {
+            "buy_num": 0.3,
+            "revenue": 0.095
+        },
+        {
+            "buy_num": 0.4,
+            "revenue": 0.09
+        },
+        {
+            "buy_num": 0.5,
+            "revenue": 0.09
+        },
+        {
+            "buy_num": 0.6,
+            "revenue": 0.085
+        },
+        {
+            "buy_num": 0.7,
+            "revenue": 0.085
+        },
+        {
+            "buy_num": 0.8,
+            "revenue": 0.08
+        },
+        {
+            "buy_num": 0.9,
+            "revenue": 0.08
+        },
+        {
+            "buy_num": 1.0,
+            "revenue": 0.075
+        },
+        {
+            "buy_num": 1.1,
+            "revenue": 0.075
+        },
+        {
+            "buy_num": 1.2,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 1.3,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 1.4,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 1.5,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 1.6,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 1.7,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 1.8,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 1.9,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 2.0,
+            "revenue": 0.05
+        }
+    ],
+    "曼德矿场": [
+        {
+            "buy_num": 0.0,
+            "revenue": 0.1
+        },
+        {
+            "buy_num": 0.1,
+            "revenue": 0.1
+        },
+        {
+            "buy_num": 0.2,
+            "revenue": 0.095
+        },
+        {
+            "buy_num": 0.3,
+            "revenue": 0.095
+        },
+        {
+            "buy_num": 0.4,
+            "revenue": 0.09
+        },
+        {
+            "buy_num": 0.5,
+            "revenue": 0.09
+        },
+        {
+            "buy_num": 0.6,
+            "revenue": 0.085
+        },
+        {
+            "buy_num": 0.7,
+            "revenue": 0.085
+        },
+        {
+            "buy_num": 0.8,
+            "revenue": 0.08
+        },
+        {
+            "buy_num": 0.9,
+            "revenue": 0.08
+        },
+        {
+            "buy_num": 1.0,
+            "revenue": 0.075
+        },
+        {
+            "buy_num": 1.1,
+            "revenue": 0.075
+        },
+        {
+            "buy_num": 1.2,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 1.3,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 1.4,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 1.5,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 1.6,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 1.7,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 1.8,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 1.9,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 2.0,
+            "revenue": 0.05
+        }
+    ],
+    "汇流塔": [
+        {
+            "buy_num": 0.0,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.1,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.2,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.30000000000000004,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.4,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.5,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.6000000000000001,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.7000000000000001,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.8,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 0.9,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 1.0,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.1,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.2000000000000002,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.3,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.4000000000000001,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.5,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.6,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.7000000000000002,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.8,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 1.9000000000000001,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 2.0,
+            "revenue": 0.05
+        }
+    ],
+    "海角城": [
+        {
+            "buy_num": 0.0,
+            "revenue": 0.1
+        },
+        {
+            "buy_num": 0.1,
+            "revenue": 0.1
+        },
+        {
+            "buy_num": 0.2,
+            "revenue": 0.095
+        },
+        {
+            "buy_num": 0.3,
+            "revenue": 0.095
+        },
+        {
+            "buy_num": 0.4,
+            "revenue": 0.09
+        },
+        {
+            "buy_num": 0.5,
+            "revenue": 0.09
+        },
+        {
+            "buy_num": 0.6,
+            "revenue": 0.085
+        },
+        {
+            "buy_num": 0.7,
+            "revenue": 0.085
+        },
+        {
+            "buy_num": 0.8,
+            "revenue": 0.08
+        },
+        {
+            "buy_num": 0.9,
+            "revenue": 0.08
+        },
+        {
+            "buy_num": 1.0,
+            "revenue": 0.075
+        },
+        {
+            "buy_num": 1.1,
+            "revenue": 0.075
+        },
+        {
+            "buy_num": 1.2,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 1.3,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 1.4,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 1.5,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 1.6,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 1.7,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 1.8,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 1.9,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 2.0,
+            "revenue": 0.05
+        }
+    ],
+    "淘金乐园": [
+        {
+            "buy_num": 0.0,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.1,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.2,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.30000000000000004,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.4,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.5,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.6000000000000001,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.7000000000000001,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.8,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 0.9,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 1.0,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.1,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.2000000000000002,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.3,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.4000000000000001,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.5,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.6,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.7000000000000002,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.8,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 1.9000000000000001,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 2.0,
+            "revenue": 0.05
+        }
+    ],
+    "澄明数据中心": [
+        {
+            "buy_num": 0.0,
+            "revenue": 0.1
+        },
+        {
+            "buy_num": 0.1,
+            "revenue": 0.1
+        },
+        {
+            "buy_num": 0.2,
+            "revenue": 0.095
+        },
+        {
+            "buy_num": 0.3,
+            "revenue": 0.095
+        },
+        {
+            "buy_num": 0.4,
+            "revenue": 0.09
+        },
+        {
+            "buy_num": 0.5,
+            "revenue": 0.09
+        },
+        {
+            "buy_num": 0.6,
+            "revenue": 0.085
+        },
+        {
+            "buy_num": 0.7,
+            "revenue": 0.085
+        },
+        {
+            "buy_num": 0.8,
+            "revenue": 0.08
+        },
+        {
+            "buy_num": 0.9,
+            "revenue": 0.08
+        },
+        {
+            "buy_num": 1.0,
+            "revenue": 0.075
+        },
+        {
+            "buy_num": 1.1,
+            "revenue": 0.075
+        },
+        {
+            "buy_num": 1.2,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 1.3,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 1.4,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 1.5,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 1.6,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 1.7,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 1.8,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 1.9,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 2.0,
+            "revenue": 0.05
+        }
+    ],
+    "荒原站": [
+        {
+            "buy_num": 0.0,
+            "revenue": 0.1
+        },
+        {
+            "buy_num": 0.1,
+            "revenue": 0.1
+        },
+        {
+            "buy_num": 0.2,
+            "revenue": 0.095
+        },
+        {
+            "buy_num": 0.3,
+            "revenue": 0.095
+        },
+        {
+            "buy_num": 0.4,
+            "revenue": 0.09
+        },
+        {
+            "buy_num": 0.5,
+            "revenue": 0.09
+        },
+        {
+            "buy_num": 0.6,
+            "revenue": 0.085
+        },
+        {
+            "buy_num": 0.7,
+            "revenue": 0.085
+        },
+        {
+            "buy_num": 0.8,
+            "revenue": 0.08
+        },
+        {
+            "buy_num": 0.9,
+            "revenue": 0.08
+        },
+        {
+            "buy_num": 1.0,
+            "revenue": 0.075
+        },
+        {
+            "buy_num": 1.1,
+            "revenue": 0.075
+        },
+        {
+            "buy_num": 1.2,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 1.3,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 1.4,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 1.5,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 1.6,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 1.7,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 1.8,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 1.9,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 2.0,
+            "revenue": 0.05
+        }
+    ],
+    "远星大桥": [
+        {
+            "buy_num": 0.0,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.1,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.2,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.30000000000000004,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.4,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.5,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.6000000000000001,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.7000000000000001,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.8,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 0.9,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 1.0,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.1,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.2000000000000002,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.3,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.4000000000000001,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.5,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.6,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.7000000000000002,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.8,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 1.9000000000000001,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 2.0,
+            "revenue": 0.05
+        }
+    ],
+    "铁盟哨站": [
+        {
+            "buy_num": 0.0,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.1,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.2,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.30000000000000004,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.4,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.5,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.6000000000000001,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.7000000000000001,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.8,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 0.9,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 1.0,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.1,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.2000000000000002,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.3,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.4000000000000001,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.5,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.6,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.7000000000000002,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.8,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 1.9000000000000001,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 2.0,
+            "revenue": 0.05
+        }
+    ],
+    "阿妮塔发射中心": [
+        {
+            "buy_num": 0.0,
+            "revenue": 0.1
+        },
+        {
+            "buy_num": 0.1,
+            "revenue": 0.1
+        },
+        {
+            "buy_num": 0.2,
+            "revenue": 0.095
+        },
+        {
+            "buy_num": 0.3,
+            "revenue": 0.095
+        },
+        {
+            "buy_num": 0.4,
+            "revenue": 0.09
+        },
+        {
+            "buy_num": 0.5,
+            "revenue": 0.09
+        },
+        {
+            "buy_num": 0.6,
+            "revenue": 0.085
+        },
+        {
+            "buy_num": 0.7,
+            "revenue": 0.085
+        },
+        {
+            "buy_num": 0.8,
+            "revenue": 0.08
+        },
+        {
+            "buy_num": 0.9,
+            "revenue": 0.08
+        },
+        {
+            "buy_num": 1.0,
+            "revenue": 0.075
+        },
+        {
+            "buy_num": 1.1,
+            "revenue": 0.075
+        },
+        {
+            "buy_num": 1.2,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 1.3,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 1.4,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 1.5,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 1.6,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 1.7,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 1.8,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 1.9,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 2.0,
+            "revenue": 0.05
+        }
+    ],
+    "阿妮塔战备工厂": [
+        {
+            "buy_num": 0.0,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.1,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.2,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.30000000000000004,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.4,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.5,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.6000000000000001,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.7000000000000001,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.8,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 0.9,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 1.0,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.1,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.2000000000000002,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.3,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.4000000000000001,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.5,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.6,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.7000000000000002,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.8,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 1.9000000000000001,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 2.0,
+            "revenue": 0.05
+        }
+    ],
+    "阿妮塔能源研究所": [
+        {
+            "buy_num": 0.0,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.1,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.2,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.30000000000000004,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.4,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.5,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.6000000000000001,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.7000000000000001,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.8,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 0.9,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 1.0,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.1,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.2000000000000002,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.3,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.4000000000000001,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.5,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.6,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.7000000000000002,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.8,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 1.9000000000000001,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 2.0,
+            "revenue": 0.05
+        }
+    ],
+    "岚心城": [
+        {
+            "buy_num": 0.0,
+            "revenue": 0.1
+        },
+        {
+            "buy_num": 0.1,
+            "revenue": 0.1
+        },
+        {
+            "buy_num": 0.2,
+            "revenue": 0.095
+        },
+        {
+            "buy_num": 0.3,
+            "revenue": 0.095
+        },
+        {
+            "buy_num": 0.4,
+            "revenue": 0.09
+        },
+        {
+            "buy_num": 0.5,
+            "revenue": 0.09
+        },
+        {
+            "buy_num": 0.6,
+            "revenue": 0.085
+        },
+        {
+            "buy_num": 0.7,
+            "revenue": 0.085
+        },
+        {
+            "buy_num": 0.8,
+            "revenue": 0.08
+        },
+        {
+            "buy_num": 0.9,
+            "revenue": 0.08
+        },
+        {
+            "buy_num": 1.0,
+            "revenue": 0.075
+        },
+        {
+            "buy_num": 1.1,
+            "revenue": 0.075
+        },
+        {
+            "buy_num": 1.2,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 1.3,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 1.4,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 1.5,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 1.6,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 1.7,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 1.8,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 1.9,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 2.0,
+            "revenue": 0.05
+        }
+    ],
+    "栖羽站": [
+        {
+            "buy_num": 0.0,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.1,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.2,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.30000000000000004,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.4,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.5,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.6000000000000001,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.7000000000000001,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.8,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 0.9,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 1.0,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.1,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.2000000000000002,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.3,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.4000000000000001,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.5,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.6,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.7000000000000002,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.8,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 1.9000000000000001,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 2.0,
+            "revenue": 0.05
+        }
+    ],
+    "武林源": [
+        {
+            "buy_num": 0.0,
+            "revenue": 0.1
+        },
+        {
+            "buy_num": 0.1,
+            "revenue": 0.1
+        },
+        {
+            "buy_num": 0.2,
+            "revenue": 0.095
+        },
+        {
+            "buy_num": 0.3,
+            "revenue": 0.095
+        },
+        {
+            "buy_num": 0.4,
+            "revenue": 0.09
+        },
+        {
+            "buy_num": 0.5,
+            "revenue": 0.09
+        },
+        {
+            "buy_num": 0.6,
+            "revenue": 0.085
+        },
+        {
+            "buy_num": 0.7,
+            "revenue": 0.085
+        },
+        {
+            "buy_num": 0.8,
+            "revenue": 0.08
+        },
+        {
+            "buy_num": 0.9,
+            "revenue": 0.08
+        },
+        {
+            "buy_num": 1.0,
+            "revenue": 0.075
+        },
+        {
+            "buy_num": 1.1,
+            "revenue": 0.075
+        },
+        {
+            "buy_num": 1.2,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 1.3,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 1.4,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 1.5,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 1.6,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 1.7,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 1.8,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 1.9,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 2.0,
+            "revenue": 0.05
+        }
+    ],
+    "塔图站": [
+        {
+            "buy_num": 0.0,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.1,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.2,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.30000000000000004,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.4,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.5,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.6000000000000001,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.7000000000000001,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.8,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 0.9,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 1.0,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.1,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.2000000000000002,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.3,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.4000000000000001,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.5,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.6,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.7000000000000002,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.8,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 1.9000000000000001,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 2.0,
+            "revenue": 0.05
+        }
+    ],
+    "黑月游乐城": [
+        {
+            "buy_num": 0.0,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.1,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.2,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.30000000000000004,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.4,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.5,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.6000000000000001,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.7000000000000001,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.8,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 0.9,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 1.0,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.1,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.2000000000000002,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.3,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.4000000000000001,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.5,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.6,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.7000000000000002,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.8,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 1.9000000000000001,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 2.0,
+            "revenue": 0.05
+        }
+    ],
+    "贡露城": [
+        {
+            "buy_num": 0.0,
+            "revenue": 0.1
+        },
+        {
+            "buy_num": 0.1,
+            "revenue": 0.1
+        },
+        {
+            "buy_num": 0.2,
+            "revenue": 0.095
+        },
+        {
+            "buy_num": 0.3,
+            "revenue": 0.095
+        },
+        {
+            "buy_num": 0.4,
+            "revenue": 0.09
+        },
+        {
+            "buy_num": 0.5,
+            "revenue": 0.09
+        },
+        {
+            "buy_num": 0.6,
+            "revenue": 0.085
+        },
+        {
+            "buy_num": 0.7,
+            "revenue": 0.085
+        },
+        {
+            "buy_num": 0.8,
+            "revenue": 0.08
+        },
+        {
+            "buy_num": 0.9,
+            "revenue": 0.08
+        },
+        {
+            "buy_num": 1.0,
+            "revenue": 0.075
+        },
+        {
+            "buy_num": 1.1,
+            "revenue": 0.075
+        },
+        {
+            "buy_num": 1.2,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 1.3,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 1.4,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 1.5,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 1.6,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 1.7,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 1.8,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 1.9,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 2.0,
+            "revenue": 0.05
+        }
+    ],
+    "维蒂林场": [
+        {
+            "buy_num": 0.0,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.1,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 0.2,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.30000000000000004,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 0.4,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.5,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 0.6000000000000001,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.7000000000000001,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 0.8,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 0.9,
+            "revenue": 0.05
+        },
+        {
+            "buy_num": 1.0,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.1,
+            "revenue": 0.045
+        },
+        {
+            "buy_num": 1.2000000000000002,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.3,
+            "revenue": 0.04
+        },
+        {
+            "buy_num": 1.4000000000000001,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.5,
+            "revenue": 0.035
+        },
+        {
+            "buy_num": 1.6,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.7000000000000002,
+            "revenue": 0.03
+        },
+        {
+            "buy_num": 1.8,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 1.9000000000000001,
+            "revenue": 0.025
+        },
+        {
+            "buy_num": 2.0,
+            "revenue": 0.05
+        }
+    ],
+    "铁山城": [
+        {
+            "buy_num": 0.0,
+            "revenue": 0.1
+        },
+        {
+            "buy_num": 0.1,
+            "revenue": 0.1
+        },
+        {
+            "buy_num": 0.2,
+            "revenue": 0.095
+        },
+        {
+            "buy_num": 0.3,
+            "revenue": 0.095
+        },
+        {
+            "buy_num": 0.4,
+            "revenue": 0.09
+        },
+        {
+            "buy_num": 0.5,
+            "revenue": 0.09
+        },
+        {
+            "buy_num": 0.6,
+            "revenue": 0.085
+        },
+        {
+            "buy_num": 0.7,
+            "revenue": 0.085
+        },
+        {
+            "buy_num": 0.8,
+            "revenue": 0.08
+        },
+        {
+            "buy_num": 0.9,
+            "revenue": 0.08
+        },
+        {
+            "buy_num": 1.0,
+            "revenue": 0.075
+        },
+        {
+            "buy_num": 1.1,
+            "revenue": 0.075
+        },
+        {
+            "buy_num": 1.2,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 1.3,
+            "revenue": 0.07
+        },
+        {
+            "buy_num": 1.4,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 1.5,
+            "revenue": 0.065
+        },
+        {
+            "buy_num": 1.6,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 1.7,
+            "revenue": 0.06
+        },
+        {
+            "buy_num": 1.8,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 1.9,
+            "revenue": 0.055
+        },
+        {
+            "buy_num": 2.0,
+            "revenue": 0.05
+        }
+    ]
+}

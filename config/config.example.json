@@ -1,0 +1,21 @@
+{
+    "version": "beta0.1",
+    "rsb": {
+        "city": "7号自由港",
+        "levelSerialPos": [635, 662],
+        "name": "所有",
+        "num": 1
+    },
+    "rest_area": {
+        "huashi": {
+            "runtime": 0.0
+        }
+    },
+    "global_config": {
+        "is_transit_assist": false,
+        "is_auto_pick": false,
+        "is_exit_on_failure": true,
+        "is_exit_on_fatigue": true,
+        "use_stamina_item": false
+    }
+}
