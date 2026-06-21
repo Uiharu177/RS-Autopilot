@@ -12,7 +12,10 @@
           
           <div style="display: flex; flex-direction: column; height: 100%; gap: 20px">
             <div>
-              <div style="font-size: 13px; color: #64748b; margin-bottom: 8px; font-weight: 600">可选城市</div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px">
+              <span style="font-size: 13px; color: #64748b; font-weight: 600">可选城市</span>
+              <n-a href="https://www.resonance-columba.com/route" target="_blank" style="font-size: 12px">科伦巴商会</n-a>
+            </div>
               <n-space style="flex-wrap: wrap">
                 <n-tag
                   v-for="city in availableCities"
