@@ -21,8 +21,9 @@ Vite proxy 将 `/api` 和 `/socket.io` 转发到 `http://127.0.0.1:5000`。
 | `/business` | Business | 跑商配置与启停 |
 | `/device` | DeviceConfig | 设备连接与截图方式 |
 | `/settings` | Settings | 全局设置与调试入口 |
-| `/logs` | LogViewer | WebSocket 实时日志 |
+| `/debug` | DebugTools | 日志回放、截图时间线 |
+| `/about` | About | 项目说明与免责声明 |
 
 ## 后端 API
 
-详见 `docs/architecture.md`。
+详见 `docs/architecture.md`（架构说明）和 `docs/add-station-guide.md`（新增站点教程）。

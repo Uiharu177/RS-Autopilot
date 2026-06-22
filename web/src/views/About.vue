@@ -118,7 +118,9 @@
           <tr><td><n-text code>web/</n-text></td><td>Vue 3 前端（RS自动驾驶控制台）</td></tr>
           <tr><td><n-text code>resources/</n-text></td><td>游戏数据、图片模板</td></tr>
           <tr><td><n-text code>config/</n-text></td><td>运行时配置</td></tr>
-          <tr><td><n-text code>docs/</n-text></td><td>架构文档</td></tr>
+          <tr><td><n-text code>docs/</n-text></td><td>文档目录</td></tr>
+          <tr><td><n-text code>docs/architecture.md</n-text></td><td>系统架构与操作逻辑说明</td></tr>
+          <tr><td><n-text code>docs/add-station-guide.md</n-text></td><td>新增站点完整教程（坐标标定、商品/疲劳数据填写）</td></tr>
         </tbody>
       </n-table>
 
