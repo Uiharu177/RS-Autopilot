@@ -2,7 +2,7 @@ import requests
 from resonance.utils.update.base_update_utils import BaseUpdateUtils, LatestInfoResponse
 from version import __version__
 
-RES_ID = "RS-Autopilot"
+RES_ID = "resonance_ng"
 LATEST_URL = f"https://mirrorchyan.com/api/resources/{RES_ID}/latest"
 
 

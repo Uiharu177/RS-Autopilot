@@ -14,6 +14,7 @@ import cv2 as cv
 import numpy as np
 from loguru import logger
 
+from resonance.device import device as device_state
 from resonance.device.device import input_back, input_swipe, input_tap, screenshot, screenshot_image
 from resonance.utils.exception_handling import get_excption
 from resonance.vision.color import BGR, HSV
@@ -89,14 +90,14 @@ def buy_business(
             if ok:
                 time.sleep(0.5)
                 if get_boatload() == prev_load:
-                    logger.info("资金不足，跳过买货")
-                    return True
+                    logger.warning("资金不足，终止跑商")
+                    device_state.STOP = True
+                    return False
                 logger.info("资金充足")
+                if max_book > 0:
+                    for _ in range(max_book):
+                        _consume_one_book()
                 break
-
-    if max_book > 0:
-        for _ in range(max_book):
-            _consume_one_book()
 
     def process_goods(good):
         nonlocal full_boatload, invalid_page
@@ -188,7 +189,7 @@ def _is_locked_good(pos_y: int) -> bool:
     y1 = max(136, pos_y + 12)
     y2 = min(685, pos_y + 60)
     image = screenshot()
-    image.crop_image((622, y1), (854, y2))
+    image.crop_image((580, y1), (854, y2))
     results = image.ocr()
     texts = [item["text"] for item in results]
     logger.debug(f"商品锁定检测OCR: {texts}")
@@ -251,28 +252,37 @@ def get_boatload():
     return int(boatload * 100)
 
 
-def click_bargain_button(num=0):
+def _read_bargain_percent():
+    """OCR读取议价幅度百分比，成功返回int，失败返回None"""
+    results = predict(screenshot_image(), cropped_pos1=(900, 440), cropped_pos2=(1050, 480))
+    for item in results:
+        text = item["text"].replace("%", "").replace(" ", "")
+        try:
+            return int(text)
+        except ValueError:
+            continue
+    return None
+
+
+def click_bargain_button(num=0, max_attempts=8):
     logger.info(f"议价次数: {num}")
+    attempts = 0
     start = time.perf_counter()
     while time.perf_counter() - start < 15:
         if num <= 0:
             return True
-        bgr = screenshot().get_bgr((1176, 461))
-        logger.debug(f"降价界面颜色检查: {bgr}")
-        if BGR(0, 123, 240) <= bgr <= BGR(2, 133, 255):
-            input_tap((1177, 461))
-            time.sleep(1.0)
-        elif bgr == [251, 253, 253]:
-            logger.info("降价次数不足")
+        if attempts >= max_attempts:
+            logger.warning(f"议价尝试次数已达上限({max_attempts})")
             return True
-        elif bgr == [62, 63, 63]:
-            logger.info("疲劳不足")
-            input_tap((83, 36))
-            return True
-        hsv = screenshot().crop_image((516, 224), (787, 439)).get_hsv((629, 271))
-        logger.debug(f"降价是否成功颜色检查(HSV): {hsv}")
-        if 95 <= hsv.h <= 105:
-            logger.info("降价成功")
+
+        before = _read_bargain_percent()
+        input_tap((1177, 461))
+        time.sleep(1.0)
+        after = _read_bargain_percent()
+        attempts += 1
+
+        if after is not None and before is not None and after != before:
+            logger.info(f"降价成功 ({before}%→{after}%)")
             num -= 1
         else:
             logger.info("降价失败")

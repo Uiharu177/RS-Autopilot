@@ -40,7 +40,7 @@ class LatestInfoResponse(BaseModel):
 
 
 class BaseUpdateUtils(ABC):
-    zip_name = "RS-Autopilot.zip"
+    zip_name = "resonance_ng.zip"
     zip_path = TEMP_PATH / zip_name
     data: LatestInfoResponse = None
 

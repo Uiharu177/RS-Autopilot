@@ -32,6 +32,25 @@
                 <n-switch v-model:value="configs.is_exit_on_fatigue" @update:value="saveGlobalConfig" />
               </div>
             </n-list-item>
+            <n-list-item>
+              <div style="display: flex; align-items: center; justify-content: space-between">
+                <div>
+                  <div style="font-weight: 600">停止后动作</div>
+                  <div style="font-size: 12px; color: #94a3b8">任务停止/完成后对模拟器执行的操作</div>
+                </div>
+                <n-select
+                  v-model:value="configs.on_stop_action"
+                  :options="[
+                    { label: '停在原地', value: 'stay_there' },
+                    { label: '返回主界面', value: 'goto_main' },
+                    { label: '关闭游戏', value: 'close_game' },
+                  ]"
+                  @update:value="saveGlobalConfig"
+                  style="width: 160px"
+                  size="small"
+                />
+              </div>
+            </n-list-item>
           </n-list>
         </n-card>
       </n-gi>
@@ -51,6 +70,7 @@ const configs = reactive({
   is_exit_on_fatigue: false,
   use_stamina_item: false,
   is_exit_on_failure: false,
+  on_stop_action: 'stay_there',
 })
 
 async function loadSettings() {
@@ -61,6 +81,7 @@ async function loadSettings() {
       is_exit_on_fatigue: gc.is_exit_on_fatigue ?? false,
       use_stamina_item: gc.use_stamina_item ?? false,
       is_exit_on_failure: gc.is_exit_on_failure ?? false,
+      on_stop_action: gc.on_stop_action ?? 'stay_there',
     })
   } catch {}
 }

@@ -9,6 +9,7 @@ import time
 from loguru import logger
 
 from resonance.device.device import input_tap, screenshot
+from resonance.solvers.buy import _read_bargain_percent
 from resonance.utils.exception_handling import get_excption
 from resonance.vision.color import BGR
 from resonance.preset.control import wait_gbr
@@ -46,31 +47,25 @@ def is_empty_goods():
     return BGR(25, 33, 33) == bgr
 
 
-def click_bargain_button(num=0):
+def click_bargain_button(num=0, max_attempts=8):
     logger.info(f"议价次数: {num}")
+    attempts = 0
     start = time.perf_counter()
     while time.perf_counter() - start < 15:
         if num <= 0:
             return True
-        image = screenshot()
-        bgr = image.get_bgr((1176, 461))
-        logger.debug(f"抬价界面颜色检查: {bgr}")
-        if BGR(0, 170, 240) <= bgr <= BGR(5, 185, 255):
-            input_tap((1177, 461))
-            time.sleep(1.0)
-        elif bgr == [251, 253, 253]:
-            logger.info("抬价次数不足")
+        if attempts >= max_attempts:
+            logger.warning(f"议价尝试次数已达上限({max_attempts})")
             return True
-        elif bgr == [62, 63, 63]:
-            logger.info("疲劳不足")
-            input_tap((83, 36))
-            return True
-        image = screenshot()
-        image.crop_image((516, 224), (787, 439))
-        hsv = image.get_hsv((626, 273))
-        logger.debug(f"抬价是否成功颜色检查(HSV): {hsv}")
-        if 30 <= hsv.h <= 40:
-            logger.info("抬价成功")
+
+        before = _read_bargain_percent()
+        input_tap((1177, 461))
+        time.sleep(1.0)
+        after = _read_bargain_percent()
+        attempts += 1
+
+        if after is not None and before is not None and after != before:
+            logger.info(f"抬价成功 ({before}%→{after}%)")
             num -= 1
         else:
             logger.info("抬价失败")

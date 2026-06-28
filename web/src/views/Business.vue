@@ -195,7 +195,7 @@ async function autoSave() {
   saveStatus.value = ok ? 'saved' : 'unsaved'
 }
 
-watch([routeCities, buyCount], () => {
+watch([routeCities, buyCount, haggleSettings, bookSettings], () => {
   if (!loaded.value) return
   saveStatus.value = 'unsaved'
   if (saveTimer) clearTimeout(saveTimer)
@@ -362,6 +362,7 @@ async function startPageFlow() {
     message.warning('请至少选择 2 个城市进行测试')
     return
   }
+  if (!await saveConfig()) return
   pageFlowLoading.value = true
   try {
     message.info('正在验证页面切换流程，请观察日志...')

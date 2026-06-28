@@ -5,7 +5,7 @@
   2. takeover_current_city() → recovery.takeover_to_station()（接管到当前城市）
   3. normalize_takeover_city() → 如不在环线则归位（不计轮次）
   4. 循环 N 轮：导航到买货城市→交易所买→导航到卖货城市→交易所卖
-  5. _cleanup_game() → kill 游戏进程
+  5. _execute_on_stop_action() → 按 on_stop_action 配置执行后置动作
 
   支持端点（2 城往返）和环线（N 城循环）两种模式。
   互斥锁 _trade_route_lock 防止并发执行。
@@ -18,7 +18,7 @@ from typing import Any, Optional
 from loguru import logger
 
 from resonance.device import device as device_state
-from resonance.device.device import get_device, input_tap, kill, screenshot, screenshot_image
+from resonance.device.device import get_device, input_tap, screenshot, screenshot_image
 from resonance.model import app
 from resonance.model.city_goods import RouteModel, RoutesModel
 from resonance.model.config import config
@@ -106,8 +106,6 @@ class TradeRouteSolver(BaseSolver):
             except (ValueError, RuntimeError) as e:
                 logger.error(f"无法确定当前城市 ({attempt+1}/{max_attempts}): {e}")
                 if attempt == max_attempts - 1:
-                    if config.global_config.is_exit_on_failure:
-                        kill()
                     return None
                 time.sleep(2)
         return None
@@ -128,8 +126,7 @@ class TradeRouteSolver(BaseSolver):
             logger.error("使用体力药失败")
 
         if config.global_config.is_exit_on_fatigue:
-            logger.warning("疲劳保护触发，关闭游戏")
-            kill()
+            logger.warning("疲劳保护触发，停止脚本")
             device_state.STOP = True
             return False
 
@@ -405,14 +402,17 @@ class TradeRouteSolver(BaseSolver):
         n = len(self.cities)
         mode = "环线" if n > 2 else "端点"
         logger.info(f"准备运行{mode}跑商页面流程，轮数: {rounds}")
-        for round_index in range(1, rounds + 1):
-            if device_state.STOP:
-                logger.info("收到停止信号，结束页面流程")
-                return True
-            if not self._run_one_round_page_flow(round_index, rounds):
-                logger.error(f"第 {round_index}/{rounds} 轮{mode}跑商页面流程失败")
-                return False
-        return True
+        try:
+            for round_index in range(1, rounds + 1):
+                if device_state.STOP:
+                    logger.info("收到停止信号，结束页面流程")
+                    return True
+                if not self._run_one_round_page_flow(round_index, rounds):
+                    logger.error(f"第 {round_index}/{rounds} 轮{mode}跑商页面流程失败")
+                    return False
+            return True
+        finally:
+            self._execute_on_stop_action()
 
     def _cleanup_game(self):
         from resonance.device.adb import ADB
@@ -422,6 +422,20 @@ class TradeRouteSolver(BaseSolver):
             adb_killer.connect(port)
             adb_killer.device.shell("am force-stop com.hermes.goda")
             adb_killer.kill()
+
+    def _execute_on_stop_action(self):
+        action = config.global_config.on_stop_action
+        if action == "close_game":
+            logger.info("停止后动作：关闭游戏")
+            self._cleanup_game()
+        elif action == "goto_main":
+            logger.info("停止后动作：返回主界面")
+            from resonance.solvers.recovery import safe_go_home
+            if not safe_go_home():
+                logger.warning("返回主界面失败")
+        else:
+            if action != "stay_there":
+                logger.warning(f"未知的 on_stop_action: {action}，默认停在原地")
 
     def transition(self):
         """Execute configured number of complete trade route round trips."""
@@ -453,23 +467,21 @@ class TradeRouteSolver(BaseSolver):
         normalized_city = self._normalize_takeover_city(city_name)
         if not normalized_city:
             logger.error("归位失败，结束跑商")
-            if config.global_config.is_exit_on_failure:
-                kill()
             return True
 
-        for round_index in range(1, count + 1):
-            if device_state.STOP:
-                logger.info("收到停止信号，结束跑商")
-                return True
+        try:
+            for round_index in range(1, count + 1):
+                if device_state.STOP:
+                    logger.info("收到停止信号，结束跑商")
+                    return True
 
-            next_city = self._run_one_round(round_index, count, start_city=normalized_city)
-            if not next_city:
-                logger.error(f"第 {round_index}/{count} 轮{mode}跑商失败")
-                if config.global_config.is_exit_on_failure:
-                    kill()
-                return True
-            normalized_city = next_city
+                next_city = self._run_one_round(round_index, count, start_city=normalized_city)
+                if not next_city:
+                    logger.error(f"第 {round_index}/{count} 轮{mode}跑商失败")
+                    return True
+                normalized_city = next_city
 
-        self._cleanup_game()
-        logger.info(f"{mode}跑商完成，共运行 {count} 轮")
-        return True
+            logger.info(f"{mode}跑商完成，共运行 {count} 轮")
+            return True
+        finally:
+            self._execute_on_stop_action()
