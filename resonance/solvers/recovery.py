@@ -295,8 +295,7 @@ def recover_to_expected(context: RecoveryContext) -> RecoveryResult:
 
         state = inspect_current_state()
         logger.info(
-            f"恢复流程：step={context.step}, attempt={attempt}/{context.max_attempts}, "
-            f"scene={state.scene.name}, city={state.city}"
+            f"恢复: {context.step} [{attempt}/{context.max_attempts}] 场景={state.scene.name}"
         )
 
         if state.scene in context.expected_scenes:

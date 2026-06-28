@@ -101,7 +101,7 @@ def _wait_exchange_ocr_click(timeout: float = 15.0, initial_results: Optional[Li
                 center_x = int((x1 + x2) / 2)
             center_y = int((position[0][1] + position[2][1]) / 2)
             pos = (center_x, center_y + 35)
-            logger.info(f"交易所OCR稳定命中: {text} / {alias} => {pos}")
+            logger.info(f"交易所OCR稳定命中: {text}")
             get_device().input_tap(pos[0], pos[1])
             time.sleep(1.0)
             if _is_exchange_opened(_current_exchange_texts()):
@@ -251,7 +251,7 @@ def enter_exchange(tab: Literal["buy", "sell"] = "buy") -> bool:
         if not _is_exchange_opened(texts):
             logger.error("进入交易所失败")
             return False
-        logger.info(f"交易所标题颜色未命中，但检测到页面标记，继续选择页签: {texts[:8]}")
+        logger.info(f"交易所: 标题颜色未命中，根据页面标记继续")
 
     if tab == "buy":
         input_tap((927, 321))
@@ -275,7 +275,7 @@ def enter_exchange(tab: Literal["buy", "sell"] = "buy") -> bool:
 
     texts = _current_exchange_texts()
     if _is_exchange_opened(texts):
-        logger.info(f"检测到交易所页面标记，放行进入交易所: {texts[:8]}")
+        logger.info("交易所: 页面标记命中，放行")
         return True
 
     logger.error("进入交易所失败")

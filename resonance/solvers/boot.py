@@ -93,7 +93,7 @@ def boot_game(port: Optional[int] = None) -> Optional[str]:
             continue
 
         scene = recog.scene
-        logger.info(f"第0章状态检测: {scene.name} (outer={outer})")
+        logger.info(f"启动循环 #{outer} 场景={scene.name}")
 
         if _detect_travel(scene):
             logger.info("检测到行车中，等待到站")
@@ -134,7 +134,7 @@ def boot_game(port: Optional[int] = None) -> Optional[str]:
 
         time.sleep(3)
 
-    logger.error("第0章启动失败：所有重试耗尽")
+    logger.error("启动失败：所有重试耗尽")
     return None
 
 

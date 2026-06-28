@@ -271,7 +271,7 @@ def _swipe_calibrated_target_to_center(calibration: MapCalibration, target: str)
     logger.info(f"投影导航: {target} steps={steps}")
     for step in range(steps):
         end_x, end_y = _clamp_map_swipe_start(MAP_CENTER[0] - step_dx, MAP_CENTER[1] - step_dy)
-        logger.info(f"导航分步 {step + 1}/{steps}")
+        logger.info(f"导航 [{step + 1}/{steps}]")
         input_swipe_hold(MAP_CENTER, (end_x, end_y), swipe_time=700, hold_ms=800)
         wait_stopped(threshold=7100000)
         _log_navigation_step_observation(step + 1, steps, target)
@@ -308,7 +308,7 @@ def _coarse_swipe_from_anchor(anchor: MapAnchor, target: str) -> bool:
     logger.info(f"粗滑导航: {anchor.name}->{target} steps={steps}")
 
     for step in range(steps):
-        logger.info(f"粗滑分步 {step + 1}/{steps}")
+        logger.info(f"粗滑 [{step + 1}/{steps}]")
         input_swipe_hold(
             MAP_CENTER,
             _clamp_map_swipe_start(MAP_CENTER[0] + step_x, MAP_CENTER[1] + step_y),
@@ -356,8 +356,7 @@ def _log_navigation_step_observation(step: int, steps: int, target: str) -> None
 
     logger.info(
         f"投影导航观测 {step}/{steps}: target_loc={target_loc}, "
-        f"central={bool(target_loc and _is_target_central(target_loc))}, "
-        f"visible_anchor={visible_anchor}, ocr={texts}"
+        f"visible_anchor={visible_anchor}"
     )
 
 
@@ -378,14 +377,12 @@ def _swipe_projection_to_center(anchor: MapAnchor, target: str) -> bool:
     step_dx = planned_dx / steps
     step_dy = planned_dy / steps
     logger.info(
-        f"已知站点投影: anchor={anchor.name}@({anchor.screen_x},{anchor.screen_y}) "
-        f"target={target}理论屏幕=({int(target_screen_x)},{int(target_screen_y)}) "
-        f"move=({int(move_dx)},{int(move_dy)}) gain={MAP_SWIPE_GAIN} steps={steps}"
+        f"已知站点投影: {anchor.name}->{target} steps={steps}"
     )
 
     for step in range(steps):
         end_x, end_y = _clamp_map_swipe_start(MAP_CENTER[0] - step_dx, MAP_CENTER[1] - step_dy)
-        logger.info(f"投影分步 {step + 1}/{steps}")
+        logger.info(f"投影 [{step + 1}/{steps}]")
         input_swipe_hold(MAP_CENTER, (end_x, end_y), swipe_time=700, hold_ms=800)
         wait_stopped(threshold=7100000)
         _log_navigation_step_observation(step + 1, steps, target)
@@ -456,10 +453,7 @@ def nudge_station_to_point(
         hand_x = max(-MAX_NUDGE_HAND_X, min(MAX_NUDGE_HAND_X, dx / NUDGE_RESPONSE_X))
         hand_y = max(-MAX_NUDGE_HAND_Y, min(MAX_NUDGE_HAND_Y, dy / NUDGE_RESPONSE_Y))
         end = _clamp_map_swipe_start(MAP_CENTER[0] + hand_x, MAP_CENTER[1] + hand_y)
-        logger.info(
-            f"精确矫正 {name} [{step + 1}/{max_steps}]: loc={loc}, target={target_pos}, "
-            f"hand=({int(hand_x)},{int(hand_y)}), end={end}"
-        )
+        logger.info(f"精确矫正 {name} [{step + 1}/{max_steps}]")
         input_swipe_hold(MAP_CENTER, end, swipe_time=600, hold_ms=800)
         wait_stopped(threshold=7100000)
 
@@ -521,7 +515,7 @@ def swipe_to_target(from_city: str, to_city: str) -> bool:
         target_loc = _find_station_template_on_map(to_city)
         if target_loc:
             if _is_target_central(target_loc):
-                logger.info(f"短搜索第 {step} 步：目标 {to_city} 已在中心区 {target_loc}")
+                logger.info(f"短搜索 {step}: {to_city} 已居中")
                 return True
             _center_visible_target_once(target_loc)
             centered_loc = _find_station_template_on_map(to_city)
@@ -535,7 +529,7 @@ def swipe_to_target(from_city: str, to_city: str) -> bool:
                 return True
 
         x1, y1 = _clamp_map_swipe_start(MAP_CENTER[0] + dx, MAP_CENTER[1] + dy)
-        logger.info(f"短搜索第 {step} 步：未找到已知锚点，探测滑动起点({x1},{y1})")
+        logger.info(f"短搜索 {step}: 未找到锚点，探测滑动")
         input_swipe_hold((x1, y1), MAP_CENTER, swipe_time=500, hold_ms=700)
         wait_stopped(threshold=7100000)
 

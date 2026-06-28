@@ -9,7 +9,7 @@ import time
 from loguru import logger
 
 from resonance.device.device import input_tap, screenshot
-from resonance.solvers.buy import _read_bargain_percent
+from resonance.solvers.buy import _read_bargain_percent, _wait_bargain_stable
 from resonance.utils.exception_handling import get_excption
 from resonance.vision.color import BGR
 from resonance.preset.control import wait_gbr
@@ -60,13 +60,16 @@ def click_bargain_button(num=0, max_attempts=8):
 
         before = _read_bargain_percent()
         input_tap((1177, 461))
-        time.sleep(1.0)
-        after = _read_bargain_percent()
+        time.sleep(0.3)
+        after = _wait_bargain_stable()
         attempts += 1
 
         if after is not None and before is not None and after != before:
             logger.info(f"抬价成功 ({before}%→{after}%)")
             num -= 1
+            if after >= 20:
+                logger.info(f"抬价幅度已达{after}%，停止议价")
+                return True
         else:
             logger.info("抬价失败")
         wait_gbr((629, 101), BGR(30, 50, 65), BGR(40, 60, 75))

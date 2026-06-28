@@ -254,14 +254,26 @@ def get_boatload():
 
 def _read_bargain_percent():
     """OCR读取议价幅度百分比，成功返回int，失败返回None"""
+    import re
     results = predict(screenshot_image(), cropped_pos1=(900, 440), cropped_pos2=(1050, 480))
     for item in results:
-        text = item["text"].replace("%", "").replace(" ", "")
-        try:
-            return int(text)
-        except ValueError:
-            continue
+        numbers = re.findall(r"-?\d+", item["text"])
+        if numbers:
+            return int(numbers[0])
     return None
+
+
+def _wait_bargain_stable(timeout=3.0):
+    """点击后反复读幅度数字，直到连续两次相同则认为动画结束"""
+    start = time.perf_counter()
+    last = None
+    while time.perf_counter() - start < timeout:
+        val = _read_bargain_percent()
+        if val is not None and val == last:
+            return val
+        last = val
+        time.sleep(0.3)
+    return _read_bargain_percent()
 
 
 def click_bargain_button(num=0, max_attempts=8):
@@ -277,13 +289,16 @@ def click_bargain_button(num=0, max_attempts=8):
 
         before = _read_bargain_percent()
         input_tap((1177, 461))
-        time.sleep(1.0)
-        after = _read_bargain_percent()
+        time.sleep(0.3)
+        after = _wait_bargain_stable()
         attempts += 1
 
         if after is not None and before is not None and after != before:
             logger.info(f"降价成功 ({before}%→{after}%)")
             num -= 1
+            if after >= 20:
+                logger.info(f"砍价幅度已达{after}%，停止议价")
+                return True
         else:
             logger.info("降价失败")
         wait_gbr((628, 102), BGR(60, 55, 30), BGR(70, 65, 40))
