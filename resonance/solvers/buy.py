@@ -16,7 +16,6 @@ from loguru import logger
 
 from resonance.device import device as device_state
 from resonance.device.device import input_back, input_swipe_hold, input_tap, screenshot, screenshot_image
-from resonance.utils.exception_handling import get_excption
 from resonance.vision.ocr import predict
 from resonance.preset import click
 
@@ -161,77 +160,158 @@ def is_empty_goods():
     return bgr.r < 40 and bgr.g < 40 and bgr.b < 40
 
 
-def _find_good_exact(good: str):
-    """精确匹配商品名（OCR 文本必须等于或仅多/少一个字），避免子串误匹配"""
+def _chars_diff(a: str, b: str) -> int:
+    """计算两个等长字符串的字符差异数"""
+    return sum(1 for ca, cb in zip(a, b) if ca != cb)
+
+
+def _ocr_goods_list():
+    """OCR 商品列表区域，返回完整 data"""
     image = screenshot()
-    image.crop_image((622, 136), (854, 685))
-    data = image.ocr()
+    image.crop_image((580, 130), (854, 685))
+    return image.ocr()
+
+
+def _match_good_name(data, good):
+    """在 OCR data 里找商品名，返回 (cx, cy) 或 None。
+    匹配规则：完全相等，或等长且仅差1字且首/尾字相同。
+    位置验证：下方 +10~35px 内必须有百分比文本（endswith %），否则视为价格行误识别。"""
     for item in data:
         text = item["text"]
-        if text == good or text.startswith(good) or text.endswith(good):
-            position = item["position"]
-            cx = int((position[0][0] + position[2][0]) / 2)
-            cy = int((position[0][1] + position[2][1]) / 2)
-            logger.debug(f"精确匹配商品: 目标={good}, OCR={text}, pos=({cx},{cy})")
-            return (cx, cy), image
-    logger.debug(f"精确匹配失败: 目标={good}, OCR文本={[i['text'] for i in data]}")
-    return None, image
+        if not (text == good or (len(text) == len(good) and _chars_diff(text, good) == 1 and (text[0] == good[0] or text[-1] == good[-1]))):
+            continue
+        cy = (item["position"][0][1] + item["position"][2][1]) / 2
+        cx = (item["position"][0][0] + item["position"][2][0]) / 2
+        has_pct_below = False
+        for other in data:
+            oy = (other["position"][0][1] + other["position"][2][1]) / 2
+            if cy + 10 <= oy <= cy + 35 and other["text"].endswith("%"):
+                has_pct_below = True
+                break
+        if not has_pct_below:
+            logger.info(f"匹配{good}(OCR={text})但下方无百分比，疑似误识别: y={cy:.0f}")
+            continue
+        pos = (int(cx), int(cy))
+        logger.info(f"匹配商品: 目标={good}, OCR={text}, pos={pos}")
+        return pos
+    return None
+
+
+def _is_locked(data, pos_y):
+    """检查商品名下方 +10~55px 内是否有锁文本（投资/声望/解锁）"""
+    y1 = pos_y + 10
+    y2 = pos_y + 55
+    for item in data:
+        text = item["text"]
+        oy = (item["position"][0][1] + item["position"][2][1]) / 2
+        if y1 <= oy <= y2:
+            if "投资" in text or "声望" in text or "解锁" in text:
+                logger.info(f"锁定检测命中: y={oy:.0f}, text={text}")
+                return True
+    return False
+
+
+def _goods_signature(data):
+    """商品签名：商品名+y坐标集合，用于滑到顶/底检测。
+    过滤百分比和纯数字，只保留长度≥2的文本。
+    y坐标四舍五入到10px粒度，避免OCR抖动导致签名不同。"""
+    sig = []
+    for item in data:
+        text = item["text"]
+        if len(text) < 2 or text.endswith("%") or text.replace(".", "").replace(",", "").isdigit():
+            continue
+        y = int((item["position"][0][1] + item["position"][2][1]) / 2 / 10) * 10
+        sig.append((text, y))
+    return tuple(sorted(sig))
 
 
 def buy_good(good: str, book: int, max_book: int, again: bool = False):
     logger.info(f"正在购买: {good}")
-    pos, image = _find_good_exact(good)
-    if not pos:
-        pos, image = find_good(good)
-    if pos and image is not None:
-        # 商品离底部太近时，锁文本可能被截断，下滑让商品上移到安全位置
-        if pos[1] > 600:
-            input_swipe_hold((678, 314), (693, 558), swipe_time=300, hold_ms=200)
-            time.sleep(0.3)
-            new_pos, new_image = _find_good_exact(good)
-            if new_pos:
-                pos, image = new_pos, new_image
-        if _is_locked_good(pos[1]):
+
+    # 先在当前页面找
+    data = _ocr_goods_list()
+    pos = _match_good_name(data, good)
+    if pos:
+        if _is_locked(data, pos[1]):
             logger.info(f"商品{good}未解锁，跳过")
             return False, book
-        logger.info(f"点击商品: {good}")
+        logger.info(f"点击商品: {good}, pos={pos}")
         click(pos)
         time.sleep(0.3)
         return True, book
+
+    # 阶段1：从当前位置下滑搜索
+    last_sig = _goods_signature(data)
+    same_count = 0
+    for _ in range(20):
+        input_swipe_hold((693, 314), (678, 558), swipe_time=500, hold_ms=400)
+        time.sleep(0.8)
+        data = _ocr_goods_list()
+        pos = _match_good_name(data, good)
+        if pos:
+            if _is_locked(data, pos[1]):
+                logger.info(f"商品{good}未解锁，跳过")
+                return False, book
+            logger.info(f"点击商品: {good}, pos={pos}")
+            click(pos)
+            time.sleep(0.3)
+            return True, book
+
+        sig = _goods_signature(data)
+        if sig == last_sig:
+            same_count += 1
+            if same_count >= 2:
+                logger.info("已滑到底，上滑到顶再搜")
+                break
+        else:
+            same_count = 0
+        last_sig = sig
     else:
+        logger.info(f"未找到商品: {good}")
         return False, book
 
+    # 阶段2：上滑到顶
+    last_sig = _goods_signature(data)
+    for _ in range(10):
+        input_swipe_hold((678, 558), (693, 314), swipe_time=500, hold_ms=400)
+        time.sleep(0.8)
+        data = _ocr_goods_list()
+        sig = _goods_signature(data)
+        if sig == last_sig:
+            logger.info("已滑到顶")
+            break
+        last_sig = sig
 
-def _is_locked_good(pos_y: int) -> bool:
-    y1 = max(136, pos_y + 12)
-    y2 = min(685, pos_y + 60)
-    image = screenshot()
-    image.crop_image((580, y1), (854, y2))
-    results = image.ocr()
-    texts = [item["text"] for item in results]
-    logger.debug(f"商品锁定检测OCR: {texts}")
-    return any("解锁" in text or "声望" in text or "投资" in text or "声望达到" in text for text in texts)
-
-
-def find_good(good, timeout=10):
-    start = time.time()
-    scrolled_to_top = False
-    while (spend_time := time.time() - start) < timeout:
-        if not scrolled_to_top:
-            # 先连续上滑回到列表顶部
-            input_swipe_hold((678, 558), (693, 314), swipe_time=300, hold_ms=200)
+    # 阶段3：从顶下滑搜索
+    last_sig = None
+    same_count = 0
+    for _ in range(20):
+        data = _ocr_goods_list()
+        pos = _match_good_name(data, good)
+        if pos:
+            if _is_locked(data, pos[1]):
+                logger.info(f"商品{good}未解锁，跳过")
+                return False, book
+            logger.info(f"点击商品: {good}, pos={pos}")
+            click(pos)
             time.sleep(0.3)
-            input_swipe_hold((678, 558), (693, 314), swipe_time=300, hold_ms=200)
-            time.sleep(0.3)
-            scrolled_to_top = True
+            return True, book
+
+        sig = _goods_signature(data)
+        if sig == last_sig:
+            same_count += 1
+            if same_count >= 2:
+                logger.info("已滑到底，停止搜索")
+                break
         else:
-            # 再逐步向下滑搜索
-            input_swipe_hold((693, 314), (678, 558), swipe_time=300, hold_ms=200)
-            time.sleep(0.3)
-        result, image = _find_good_exact(good)
-        if result:
-            return result, image
-    return None, None
+            same_count = 0
+        last_sig = sig
+
+        input_swipe_hold((693, 314), (678, 558), swipe_time=500, hold_ms=400)
+        time.sleep(0.8)
+
+    logger.info(f"未找到商品: {good}")
+    return False, book
 
 
 def _dismiss_popup() -> bool:
