@@ -12,7 +12,6 @@ from resonance.device.device import input_tap, screenshot
 from resonance.solvers.buy import _read_bargain_percent, _wait_bargain_stable
 from resonance.utils.exception_handling import get_excption
 from resonance.vision.color import BGR
-from resonance.preset.control import wait_gbr
 
 
 def sell_business(num=0):
@@ -72,7 +71,6 @@ def click_bargain_button(num=0, max_attempts=8):
                 return True
         else:
             logger.info("抬价失败")
-        wait_gbr((629, 101), BGR(30, 50, 65), BGR(40, 60, 75))
     return False
 
 

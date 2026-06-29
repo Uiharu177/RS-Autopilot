@@ -17,10 +17,8 @@ from loguru import logger
 from resonance.device import device as device_state
 from resonance.device.device import input_back, input_swipe, input_tap, screenshot, screenshot_image
 from resonance.utils.exception_handling import get_excption
-from resonance.vision.color import BGR, HSV
 from resonance.vision.ocr import predict
-from resonance.preset import click, find_text, go_home
-from resonance.preset.control import wait_gbr
+from resonance.preset import click
 
 
 def buy_business(
@@ -163,17 +161,36 @@ def is_empty_goods():
     return bgr.r < 40 and bgr.g < 40 and bgr.b < 40
 
 
+def _find_good_exact(good: str):
+    """精确匹配商品名（OCR 文本必须等于或仅多/少一个字），避免子串误匹配"""
+    image = screenshot()
+    image.crop_image((622, 136), (854, 685))
+    data = image.ocr()
+    for item in data:
+        text = item["text"]
+        if text == good or text.startswith(good) or text.endswith(good):
+            position = item["position"]
+            cx = int((position[0][0] + position[2][0]) / 2)
+            cy = int((position[0][1] + position[2][1]) / 2)
+            logger.debug(f"精确匹配商品: 目标={good}, OCR={text}, pos=({cx},{cy})")
+            return (cx, cy), image
+    logger.debug(f"精确匹配失败: 目标={good}, OCR文本={[i['text'] for i in data]}")
+    return None, image
+
+
 def buy_good(good: str, book: int, max_book: int, again: bool = False):
     logger.info(f"正在购买: {good}")
-    pos, image = find_text(
-        good,
-        cropped_pos1=(622, 136),
-        cropped_pos2=(854, 685),
-        log=False,
-    )
+    pos, image = _find_good_exact(good)
     if not pos:
         pos, image = find_good(good)
     if pos and image is not None:
+        # 商品离底部太近时，锁文本可能被截断，下滑让商品上移到安全位置
+        if pos[1] > 600:
+            input_swipe((678, 314), (693, 558), swipe_time=300)
+            time.sleep(0.5)
+            new_pos, new_image = _find_good_exact(good)
+            if new_pos:
+                pos, image = new_pos, new_image
         if _is_locked_good(pos[1]):
             logger.info(f"商品{good}未解锁，跳过")
             return False, book
@@ -198,18 +215,20 @@ def _is_locked_good(pos_y: int) -> bool:
 
 def find_good(good, timeout=10):
     start = time.time()
+    scrolled_to_top = False
     while (spend_time := time.time() - start) < timeout:
-        if spend_time < timeout / 2:
+        if not scrolled_to_top:
+            # 先连续上滑回到列表顶部
             input_swipe((678, 558), (693, 314), swipe_time=500)
+            time.sleep(0.5)
+            input_swipe((678, 558), (693, 314), swipe_time=500)
+            time.sleep(0.5)
+            scrolled_to_top = True
         else:
+            # 再逐步向下滑搜索
             input_swipe((693, 314), (678, 558), swipe_time=500)
-        time.sleep(1)
-        result, image = find_text(
-            good,
-            cropped_pos1=(622, 136),
-            cropped_pos2=(854, 685),
-            log=False,
-        )
+            time.sleep(0.5)
+        result, image = _find_good_exact(good)
         if result:
             return result, image
     return None, None
@@ -301,7 +320,6 @@ def click_bargain_button(num=0, max_attempts=8):
                 return True
         else:
             logger.info("降价失败")
-        wait_gbr((628, 102), BGR(60, 55, 30), BGR(70, 65, 40))
     return False
 
 
