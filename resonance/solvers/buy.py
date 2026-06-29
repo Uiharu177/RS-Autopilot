@@ -15,7 +15,7 @@ import numpy as np
 from loguru import logger
 
 from resonance.device import device as device_state
-from resonance.device.device import input_back, input_swipe, input_tap, screenshot, screenshot_image
+from resonance.device.device import input_back, input_swipe_hold, input_tap, screenshot, screenshot_image
 from resonance.utils.exception_handling import get_excption
 from resonance.vision.ocr import predict
 from resonance.preset import click
@@ -186,8 +186,8 @@ def buy_good(good: str, book: int, max_book: int, again: bool = False):
     if pos and image is not None:
         # 商品离底部太近时，锁文本可能被截断，下滑让商品上移到安全位置
         if pos[1] > 600:
-            input_swipe((678, 314), (693, 558), swipe_time=300)
-            time.sleep(0.5)
+            input_swipe_hold((678, 314), (693, 558), swipe_time=300, hold_ms=200)
+            time.sleep(0.3)
             new_pos, new_image = _find_good_exact(good)
             if new_pos:
                 pos, image = new_pos, new_image
@@ -219,15 +219,15 @@ def find_good(good, timeout=10):
     while (spend_time := time.time() - start) < timeout:
         if not scrolled_to_top:
             # 先连续上滑回到列表顶部
-            input_swipe((678, 558), (693, 314), swipe_time=500)
-            time.sleep(0.5)
-            input_swipe((678, 558), (693, 314), swipe_time=500)
-            time.sleep(0.5)
+            input_swipe_hold((678, 558), (693, 314), swipe_time=300, hold_ms=200)
+            time.sleep(0.3)
+            input_swipe_hold((678, 558), (693, 314), swipe_time=300, hold_ms=200)
+            time.sleep(0.3)
             scrolled_to_top = True
         else:
             # 再逐步向下滑搜索
-            input_swipe((693, 314), (678, 558), swipe_time=500)
-            time.sleep(0.5)
+            input_swipe_hold((693, 314), (678, 558), swipe_time=300, hold_ms=200)
+            time.sleep(0.3)
         result, image = _find_good_exact(good)
         if result:
             return result, image
