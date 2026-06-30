@@ -20,6 +20,7 @@ class RouteModel(BaseModel):
     buy_city_name: str = ""
     sell_city_name: str = ""
     haggle_num: int = 0
+    sell_haggle_num: int = 0
     goods_data: Dict[str, GoodsData] = {}
     buy_goods: Dict[str, int] = {}
     buy_price: int = 0

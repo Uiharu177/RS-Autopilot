@@ -49,8 +49,7 @@ def is_empty_goods():
 def click_bargain_button(num=0, max_attempts=8):
     logger.info(f"议价次数: {num}")
     attempts = 0
-    start = time.perf_counter()
-    while time.perf_counter() - start < 15:
+    while True:
         if num <= 0:
             return True
         if attempts >= max_attempts:

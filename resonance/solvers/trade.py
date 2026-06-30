@@ -68,11 +68,13 @@ class TradeRouteSolver(BaseSolver):
             buy = self.cities[i]
             sell = self.cities[(i + 1) % n]
             haggle = app.CityHaggle.get(buy, 0)
+            sell_haggle = app.CityHaggle.get(sell, 0)
             book = app.CityBook.get(buy, 0)
             routes.append(RouteModel(
                 buy_city_name=buy,
                 sell_city_name=sell,
                 haggle_num=haggle,
+                sell_haggle_num=sell_haggle,
                 book=book,
                 goods_data=city_sell_data.get(buy, {}),
             ))
@@ -87,6 +89,7 @@ class TradeRouteSolver(BaseSolver):
             buy_city_name=buy_city,
             sell_city_name=sell_city,
             haggle_num=app.CityHaggle.get(buy_city, 0),
+            sell_haggle_num=app.CityHaggle.get(sell_city, 0),
             book=app.CityBook.get(buy_city, 0),
             goods_data=goods,
         )
@@ -184,7 +187,7 @@ class TradeRouteSolver(BaseSolver):
             return None
 
         logger.info(f"归位：到达 {target}，卖出")
-        if not self._sell_current_goods(route.haggle_num):
+        if not self._sell_current_goods(route.sell_haggle_num):
             return None
 
         logger.info(f"归位完成，从 {target} 开始（归位段不计次数）")
@@ -316,7 +319,7 @@ class TradeRouteSolver(BaseSolver):
             if not self._check_strength_and_use():
                 return None
 
-            if not sell_goods(city.haggle_num):
+            if not sell_goods(city.sell_haggle_num):
                 return None
 
         logger.info(f"第 {round_index}/{total_rounds} 轮{mode}跑商完成")
@@ -376,7 +379,7 @@ class TradeRouteSolver(BaseSolver):
             if not self._check_strength_and_use():
                 return False
 
-            if not sell_goods(city.haggle_num):
+            if not sell_goods(city.sell_haggle_num):
                 return False
 
         logger.info(f"第 {round_index}/{total_rounds} 轮{mode}跑商页面流程完成")
