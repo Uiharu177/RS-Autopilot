@@ -19,7 +19,7 @@ if %ERRORLEVEL% neq 0 (
 if not exist logs mkdir logs
 
 echo [..] Stopping stale servers...
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr /C:":5000 " ^| findstr /C:"LISTENING"') do call :kill_port %%a 5000 python backend
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr /C:":15177 " ^| findstr /C:"LISTENING"') do call :kill_port %%a 15177 python backend
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr /C:":5173 " ^| findstr /C:"LISTENING"') do call :kill_port %%a 5173 node frontend
 goto :after_kill_port
 
@@ -42,25 +42,9 @@ if exist web\node_modules\.vite (
 
 echo [..] Starting backend...
 start /B "" "%PYTHON_EXE%" cli.py serve
-echo [OK] Backend starting at http://localhost:5000
-
-if exist web\package.json (
-    echo [..] Installing frontend dependencies...
-    call web\node_modules\.bin\vite.cmd --version >nul 2>&1
-    if %ERRORLEVEL% neq 0 (
-        echo [..] npm install...
-        cd /d web
-        call npm install
-        cd /d "%~dp0"
-    )
-
-    echo [..] Starting frontend dev server...
-    start /B cmd /c "cd /d %~dp0web && npm run dev > ..\logs\vite.log 2>&1"
-    echo [OK] Frontend starting at http://127.0.0.1:5173
-)
-
+echo [OK] Backend starting at http://localhost:15177
 echo.
-echo   Open:  http://127.0.0.1:5173
+echo   Open:  http://localhost:15177
 echo.
 echo   stop.bat   - Stop backend and frontend
 echo   status.bat - Show status
@@ -68,4 +52,4 @@ echo   status.bat - Show status
 echo.
 echo [..] Opening browser...
 timeout /t 3 /nobreak >nul
-start "" http://127.0.0.1:5173/#/
+start "" http://127.0.0.1:15177/#/

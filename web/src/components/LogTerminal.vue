@@ -60,10 +60,6 @@ defineExpose({
   overflow: hidden;
   height: 100%;
 }
-
-.n-log-inner .n-scrollbar-content {
-  padding-bottom: 4px;
-}
 </style>
 
 <style>
@@ -73,10 +69,10 @@ defineExpose({
 }
 .n-log-inner .n-scrollbar-container {
   background: transparent;
-  padding: 12px 16px;
+  padding: 12px 16px 0;
 }
 .n-log-inner .n-scrollbar-content {
-  padding-bottom: 60px;
+  padding-bottom: 4px;
 }
 .n-log-inner .n-scrollbar-content pre {
   margin: 0;
@@ -92,12 +88,14 @@ defineExpose({
 .n-log-inner.auto-scroll .n-scrollbar-container {
   overflow: hidden;
   position: relative;
-  padding: 12px 16px;
+  padding: 12px 16px 0;
 }
 .n-log-inner.auto-scroll .n-scrollbar-container .n-scrollbar-content {
   position: absolute;
   bottom: 0;
-  padding-bottom: 0;
+  left: 0;
+  right: 0;
+  padding-bottom: 4px;
 }
 .n-log-inner.auto-scroll .n-scrollbar-rail {
   display: none;

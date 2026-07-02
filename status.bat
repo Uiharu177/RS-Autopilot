@@ -3,19 +3,14 @@ chcp 65001 >nul
 cd /d "%~dp0"
 echo === RS-Autopilot Service Status ===
 
-netstat -ano 2>nul | findstr /C:"LISTENING" | findstr /C:":5000 " >nul
+netstat -ano 2>nul | findstr /C:"LISTENING" | findstr /C:":15177 " >nul
 if %ERRORLEVEL%==0 (
-    echo   Backend:  RUNNING  http://localhost:5000
+    echo   Backend:  RUNNING  http://localhost:15177
 ) else (
     echo   Backend:  STOPPED
 )
 
-netstat -ano 2>nul | findstr /C:"LISTENING" | findstr /C:":5173 " >nul
-if %ERRORLEVEL%==0 (
-    echo   Frontend: RUNNING  http://localhost:5173
-) else (
-    echo   Frontend: STOPPED
-)
+echo   Frontend: served by Backend ^(open http://localhost:15177^)
 
 if exist logs\runtime.log (
     for %%s in (logs\runtime.log) do echo   Log file: %%~zs bytes

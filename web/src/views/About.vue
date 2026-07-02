@@ -39,45 +39,73 @@
       <n-h2>环境要求</n-h2>
       <n-ul>
         <n-li><strong>OS</strong>: Windows 10/11</n-li>
-        <n-li><strong>Python</strong>: 3.11 或 3.12</n-li>
-        <n-li><strong>Node.js</strong>: 18+（前端需要）</n-li>
+        <n-li><strong>Python</strong>: 3.11 或 3.12 — <n-a href="https://www.python.org/downloads/" target="_blank">下载</n-a>（安装时勾选"Add Python to PATH"）</n-li>
+        <n-li><strong>Node.js</strong>: 18+（首次构建前端需要，运行时不需要）— <n-a href="https://nodejs.org/" target="_blank">下载</n-a></n-li>
         <n-li><strong>模拟器</strong>: <n-a href="https://mumu.163.com/mumu12/" target="_blank">MuMu 模拟器 12</n-a></n-li>
       </n-ul>
 
-      <n-h2>快速开始</n-h2>
+      <n-h2>快速开始（首次启动）</n-h2>
+      <n-p depth="3" style="margin-bottom: 12px">遇到问题时，如有必要可寻求 AI 帮助，把报错信息和当前操作贴给 AI 通常能快速定位问题。</n-p>
       <n-list bordered style="margin-bottom: 16px">
         <n-list-item>
           <template #prefix><n-tag size="small" type="primary">1</n-tag></template>
-          <div><strong>安装 Python 依赖</strong>：在项目根目录运行 <n-text code>pip install -e .</n-text></div>
+          <div><strong>安装 Python</strong>：下载并安装 Python 3.11 或 3.12，安装时勾选 "Add Python to PATH"。</div>
+          <div style="color: #94a3b8; font-size: 13px; margin: 4px 0">执行路径：任意</div>
+          <div>验证安装：</div>
+          <div><n-text code>python --version</n-text></div>
         </n-list-item>
         <n-list-item>
           <template #prefix><n-tag size="small" type="primary">2</n-tag></template>
-          <div><strong>启动服务</strong>：运行 <n-text code>start.bat</n-text> 一键启动后端和前端。</div>
+          <div><strong>安装 Node.js</strong>：下载并安装 Node.js 18 或更高版本（用于首次构建前端，运行时不需要）。</div>
+          <div style="color: #94a3b8; font-size: 13px; margin: 4px 0">执行路径：任意</div>
+          <div>验证安装：</div>
+          <div><n-text code>node --version</n-text></div>
         </n-list-item>
         <n-list-item>
           <template #prefix><n-tag size="small" type="primary">3</n-tag></template>
-          <div><strong>配置模拟器</strong>：打开「设备配置」页面，点击「扫描模拟器」，找到你的设备后点击「使用此设备」。</div>
+          <div><strong>安装 Python 依赖</strong></div>
+          <div style="color: #94a3b8; font-size: 13px; margin: 4px 0">执行路径：项目根目录</div>
+          <div>升级 pip（可选）：</div>
+          <div><n-text code>python -m pip install --upgrade pip</n-text></div>
+          <div>安装项目依赖：</div>
+          <div><n-text code>pip install -r requirements.txt</n-text></div>
         </n-list-item>
         <n-list-item>
           <template #prefix><n-tag size="small" type="primary">4</n-tag></template>
-          <div><strong>开始跑商</strong>：在「路线编排」设置好城市和次数，回到「控制中心」启动。</div>
+          <div><strong>启动</strong>：会自动安装前端依赖、构建前端、启动后端服务（端口 15177，前端由后端托管）并打开浏览器 http://127.0.0.1:15177/#/</div>
+          <div style="color: #94a3b8; font-size: 13px; margin: 4px 0">执行路径：项目根目录</div>
+          <div><n-text code>start.bat</n-text></div>
+          <div>备选：仅启动后端 API（不含前端界面）</div>
+          <div style="color: #94a3b8; font-size: 13px; margin: 4px 0">执行路径：项目根目录</div>
+          <div><n-text code>python cli.py serve</n-text></div>
+        </n-list-item>
+        <n-list-item>
+          <template #prefix><n-tag size="small" type="primary">5</n-tag></template>
+          <div><strong>配置模拟器</strong>：浏览器打开后进入「设备配置」→「扫描」→ 选中模拟器 →「使用此设备」；或启动前手动复制 <n-text code>config/app.example.json</n-text> 为 <n-text code>config/app.json</n-text> 填写设备信息。</div>
         </n-list-item>
       </n-list>
 
-      <n-h2>CLI 命令</n-h2>
-      <n-table :bordered="false" :single-line="false" size="small" style="margin-bottom: 16px">
-        <thead>
-          <tr><th style="width: 200px">命令</th><th>说明</th></tr>
-        </thead>
-        <tbody>
-          <tr><td><n-text code>resonance scan</n-text></td><td>扫描本机运行中的模拟器</td></tr>
-          <tr><td><n-text code>resonance connect --port 16384</n-text></td><td>测试指定端口的 ADB 连接</td></tr>
-          <tr><td><n-text code>resonance screenshot</n-text></td><td>执行一次截图测试（含 OCR 识别）</td></tr>
-          <tr><td><n-text code>resonance start-game</n-text></td><td>启动游戏应用</td></tr>
-          <tr><td><n-text code>resonance stop-game</n-text></td><td>强制关闭游戏应用</td></tr>
-          <tr><td><n-text code>resonance serve</n-text></td><td>启动 Web 后端 API 服务</td></tr>
-        </tbody>
-      </n-table>
+      <n-h2>端口被占用？</n-h2>
+      <n-p>项目默认使用端口 <n-text code>15177</n-text>，若该端口被其他程序占用，可修改以下两处改为空闲端口：</n-p>
+      <div style="color: #94a3b8; font-size: 13px; margin: 4px 0">后端端口（<n-text code>cli.py</n-text> 的 <n-text code>app.run(...)</n-text> 一行）</div>
+      <div><n-text code>app.run(host="127.0.0.1", port=15177, debug=False, use_reloader=False)</n-text></div>
+      <div style="color: #94a3b8; font-size: 13px; margin: 4px 0">前端 API/WebSocket 地址（<n-text code>web/src/api/index.ts</n-text> 前两行）</div>
+      <div><n-text code>export const API_ORIGIN = 'http://127.0.0.1:15177'</n-text></div>
+      <div><n-text code>export const WS_ORIGIN = 'ws://127.0.0.1:15177'</n-text></div>
+      <n-p depth="3">修改后需在 <n-text code>web/</n-text> 目录重新执行 <n-text code>npm run build</n-text>，再 <n-text code>start.bat</n-text> 生效。</n-p>
+
+      <n-h2>更新</n-h2>
+      <div style="color: #94a3b8; font-size: 13px; margin: 4px 0">执行路径：项目根目录</div>
+      <div>拉取最新代码：</div>
+      <div><n-text code>git pull</n-text></div>
+      <div>更新 Python 依赖：</div>
+      <div><n-text code>pip install -r requirements.txt</n-text></div>
+      <div>安装前端依赖并重新构建：</div>
+      <div><n-text code>cd web</n-text></div>
+      <div><n-text code>npm install</n-text></div>
+      <div><n-text code>npm run build</n-text></div>
+      <div><n-text code>cd ..</n-text></div>
+      <n-p depth="3">重新执行 <n-text code>start.bat</n-text> 即可重新启动。</n-p>
 
       <n-h2>Web 控制台</n-h2>
       <n-table :bordered="false" :single-line="false" style="margin-bottom: 16px">
@@ -123,6 +151,31 @@
           <tr><td><n-text code>docs/add-station-guide.md</n-text></td><td>新增站点完整教程（坐标标定、商品/疲劳数据填写）</td></tr>
         </tbody>
       </n-table>
+
+      <n-h2>卸载</n-h2>
+      <n-list bordered style="margin-bottom: 16px">
+        <n-list-item>
+          <template #prefix><n-tag size="small" type="warning">1</n-tag></template>
+          <div><strong>停止服务</strong>：或关闭所有 RS-Autopilot 命令行窗口。</div>
+          <div style="color: #94a3b8; font-size: 13px; margin: 4px 0">执行路径：项目根目录</div>
+          <div><n-text code>stop.bat</n-text></div>
+        </n-list-item>
+        <n-list-item>
+          <template #prefix><n-tag size="small" type="warning">2</n-tag></template>
+          <div><strong>卸载 Python 依赖（可选）</strong></div>
+          <div style="color: #94a3b8; font-size: 13px; margin: 4px 0">执行路径：任意</div>
+          <div><n-text code>pip uninstall -y Pillow loguru numpy opencv-python orjson pydantic watchdog adb-shell onnxocr-ppocrv4 requests psutil onnxruntime flask flask-cors flask-sock simple-websocket networkx pyyaml</n-text></div>
+          <div>如安装时额外装了 scrcpy 可选依赖，可一并卸载：</div>
+          <div style="color: #94a3b8; font-size: 13px; margin: 4px 0">执行路径：任意</div>
+          <div><n-text code>pip uninstall -y av</n-text></div>
+        </n-list-item>
+        <n-list-item>
+          <template #prefix><n-tag size="small" type="warning">3</n-tag></template>
+          <div><strong>删除项目目录</strong>：直接删除整个 RS-Autopilot 文件夹即可，所有配置和日志都在该目录内。</div>
+          <div style="color: #94a3b8; font-size: 13px; margin: 4px 0">可能导致的后果：已保存的跑商路线/城市配置、运行日志、调试截图都会丢失；如需保留请先备份 <n-text code>config/</n-text> 和 <n-text code>logs/</n-text> 目录。</div>
+          <div>MuMu 模拟器与游戏本身不受影响，如需卸载请另行处理。</div>
+        </n-list-item>
+      </n-list>
 
       <n-h2>致谢</n-h2>
       <n-p>

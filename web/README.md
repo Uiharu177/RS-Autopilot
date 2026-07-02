@@ -2,27 +2,37 @@
 
 Vue 3 + TypeScript + Vite + Naive UI。
 
-## 环境准备
+## 环境要求
 
-在启动前端前，需先完成后端 Python 环境配置：
+- **Node.js**: 18+ — [下载](https://nodejs.org/)
+- **Python 后端**: 需先按项目根目录 README 完成 Python 环境与依赖安装
 
-```bash
-# 项目根目录执行
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-pip install -e .
+## 快速开始
+
+### 1. 安装前端依赖
 ```
-
-## 开发
-
-```bash
 cd web
 npm install
-npm run dev     # 开发服务器 :5173
-npm run build   # 生产构建 → dist/
 ```
 
-Vite proxy 将 `/api` 和 `/socket.io` 转发到 `http://127.0.0.1:5000`。
+### 2. 启动后端
+前端开发需要后端在 `http://127.0.0.1:15177` 运行，请在项目根目录另开一个终端：
+```
+python cli.py serve
+```
+
+### 3. 启动开发服务器
+```
+npm run dev
+```
+开发服务器默认 `http://localhost:5173`，前端通过 CORS 直连后端，API 前缀 `/api`，WebSocket 走 `ws://127.0.0.1:15177/ws`，无需 Vite proxy。
+
+## 构建
+
+```
+npm run build
+```
+产物输出到 `dist/`，由后端 Flask 托管，生产环境无需 Node.js，访问 `http://127.0.0.1:15177` 即可。
 
 ## 路由
 
@@ -37,4 +47,4 @@ Vite proxy 将 `/api` 和 `/socket.io` 转发到 `http://127.0.0.1:5000`。
 
 ## 后端 API
 
-详见 `docs/architecture.md`（架构说明）和 `docs/add-station-guide.md`（新增站点教程）。
+详见 `docs/architecture.md` 和 `docs/add-station-guide.md`。

@@ -63,53 +63,114 @@
 ## 环境要求
 
 - **OS**: Windows 10/11
-- **Python**: 3.11 或 3.12 — [下载](https://www.python.org/downloads/)（安装时勾选"Add Python to PATH"）
-- **Node.js**: 18+（前端需要）
+- **Python**: 3.11 或 3.12 — [下载](https://www.python.org/downloads/)
+- **Node.js**: 18+ — [下载](https://nodejs.org/)
 - **模拟器**: [MuMu 模拟器 12](https://mumu.163.com/mumu12/)
 
 ## 快速开始
 
+> 遇到问题时，如有必要可寻求 AI 帮助，把报错信息和当前操作贴给 AI 通常能快速定位问题。
+
+### 1. 安装 Python
+下载并安装 Python 3.11 或 3.12，安装时勾选 "Add Python to PATH"。
+
+> 执行路径：任意
+
+验证安装：
 ```
-# 1. 升级 pip（解决依赖兼容问题）
+python --version
+```
+
+### 2. 安装 Node.js
+下载并安装 Node.js 18 或更高版本（用于首次构建前端，运行时不需要）。
+
+> 执行路径：任意
+
+验证安装：
+```
+node --version
+```
+
+### 3. 安装 Python 依赖
+
+> 执行路径：项目根目录
+
+升级 pip（可选）：
+```
 python -m pip install --upgrade pip
-
-# 2. 安装 Python 依赖
-pip install -r requirements.txt
-
-# 3. 启动
-start.bat                    # 一键启动后端(:5000) + 前端(:5173)
-resonance serve              # 或仅启动后端 API
-
-# 4. 配置模拟器
-#    浏览器打开 http://127.0.0.1:5173 →「设备配置」→「扫描」→「使用此设备」
-#    或启动前手动复制 config/app.example.json 为 config/app.json 填写设备信息
 ```
 
-> **注意**
-> - 依赖安装完成后还需要 `pip install -e .` 才能使用 `resonance` 命令，此步骤不会再报错
-> - `start.bat` 不需要先 `pip install`，它直接用 `python cli.py serve` 启动
-> - `start.bat` 会自动执行 `npm install` 安装前端依赖（如果还没装过）
-> - `resonance serve` 只启动后端 API（端口 5000），不含前端界面
-> - 已有 `pip install -e .` 环境的可跳过前两步，直接 `resonance serve`
+安装项目依赖：
+```
+pip install -r requirements.txt
+```
+
+### 4. 启动
+
+> 执行路径：项目根目录
+
+```
+start.bat
+```
+`start.bat` 会自动完成：
+1. 安装前端依赖（`npm install`）
+2. 构建前端到 `web/dist/`（`npm run build`）
+3. 启动后端服务，端口 15177，前端由后端托管
+4. 自动打开浏览器 http://127.0.0.1:15177/#/
+
+> 备选：仅启动后端 API（不含前端界面）
+
+> 执行路径：项目根目录
+
+```
+python cli.py serve
+```
+
+### 5. 配置模拟器
+浏览器打开后进入「设备配置」→「扫描」→ 选中模拟器 →「使用此设备」
+或启动前手动复制 `config/app.example.json` 为 `config/app.json` 填写设备信息。
+
+## 端口被占用？
+
+项目默认使用端口 `15177`，若该端口被其他程序占用，可修改以下两处改为空闲端口：
+
+> 后端端口（`cli.py` 第 `app.run(...)` 一行）
+
+```
+app.run(host="127.0.0.1", port=15177, debug=False, use_reloader=False)
+```
+
+> 前端 API/WebSocket 地址（`web/src/api/index.ts` 前两行）
+
+```
+export const API_ORIGIN = 'http://127.0.0.1:15177'
+export const WS_ORIGIN = 'ws://127.0.0.1:15177'
+```
+
+修改后需重新执行 `npm run build`（在 `web/` 目录）再 `start.bat` 生效。
 
 ## 更新
 
-```bash
-git pull                              # 拉取最新代码
-pip install -r requirements.txt       # 更新 Python 依赖（安全，幂等）
-cd web && npm install && cd ..        # 更新前端依赖（安全，幂等）
+> 执行路径：项目根目录
+
+拉取最新代码：
+```
+git pull
 ```
 
-## CLI 命令
+更新 Python 依赖：
+```
+pip install -r requirements.txt
+```
 
+安装前端依赖并重新构建：
 ```
-resonance scan                   # 扫描模拟器
-resonance connect --port 16384   # 测试 ADB 连接
-resonance screenshot             # 测试截图
-resonance start-game             # 启动游戏
-resonance stop-game              # 关闭游戏
-resonance serve                  # 启动 Web 控制台
+cd web
+npm install
+npm run build
+cd ..
 ```
+> 重新执行 `start.bat` 即可重新启动。
 
 ## 项目结构
 
@@ -129,6 +190,40 @@ resonance serve                  # 启动 Web 控制台
 | `docs/` | 文档目录 |
 | `docs/architecture.md` | 系统架构与操作逻辑说明 |
 | `docs/add-station-guide.md` | 新增站点完整教程（坐标标定、商品/疲劳数据填写） |
+
+## 卸载
+
+### 1. 停止服务
+
+> 执行路径：项目根目录
+
+```
+stop.bat
+```
+或关闭所有 RS-Autopilot 命令行窗口。
+
+### 2. 卸载 Python 依赖（可选）
+
+> 执行路径：任意
+
+```
+pip uninstall -y Pillow loguru numpy opencv-python orjson pydantic watchdog adb-shell onnxocr-ppocrv4 requests psutil onnxruntime flask flask-cors flask-sock simple-websocket networkx pyyaml
+```
+
+> 如安装时额外装了 scrcpy 可选依赖，可一并卸载：
+
+> 执行路径：任意
+
+```
+pip uninstall -y av
+```
+
+### 3. 删除项目目录
+直接删除整个 RS-Autopilot 文件夹即可，所有配置和日志都在该目录内。
+
+> 可能导致的后果：已保存的跑商路线/城市配置、运行日志、调试截图都会丢失；如需保留请先备份 `config/` 和 `logs/` 目录。
+
+> MuMu 模拟器与游戏本身不受影响，如需卸载请另行处理。
 
 ## License
 

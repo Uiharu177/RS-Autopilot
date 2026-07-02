@@ -25,8 +25,8 @@ rem Kill our own backend/frontend processes by specific window title + executabl
 taskkill /F /IM python.exe   /FI "WINDOWTITLE eq RS-Autopilot-Backend" >nul 2>&1
 taskkill /F /IM python3.exe  /FI "WINDOWTITLE eq RS-Autopilot-Backend" >nul 2>&1
 taskkill /F /IM node.exe     /FI "WINDOWTITLE eq RS-Autopilot-Frontend" >nul 2>&1
-rem Cleanup port bindings — only kill if the process is Python/Node
-for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr /C:":5000 " ^| findstr "LISTENING"') do call :kill_port %%a 5000 python backend
+rem Cleanup port bindings -- only kill if the process is Python/Node
+for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr /C:":15177 " ^| findstr "LISTENING"') do call :kill_port %%a 15177 python backend
 for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr /C:":5173 " ^| findstr "LISTENING"') do call :kill_port %%a 5173 node frontend
 goto :after_kill_port
 
@@ -48,10 +48,6 @@ if exist web\node_modules\.vite (
     rmdir /s /q web\node_modules\.vite
 )
 
-echo [..] Starting backend...
-start "RS-Autopilot-Backend" /B "%PYTHON_EXE%" cli.py serve > logs\backend.log 2>&1
-echo [OK] Backend starting at http://localhost:5000
-
 if exist web\package.json (
     echo [..] Installing frontend dependencies...
     call web\node_modules\.bin\vite.cmd --version >nul 2>&1
@@ -62,15 +58,19 @@ if exist web\package.json (
         popd
     )
 
-    echo [..] Starting frontend dev server...
-    start "RS-Autopilot-Frontend" /B cmd /c "pushd %~dp0web && npm run dev > ..\logs\vite.log 2>&1"
-    echo [OK] Frontend starting at http://127.0.0.1:5173
+    echo [..] Building frontend...
+    pushd web
+    call npm run build
+    popd
 )
+
+echo [..] Starting backend...
+start "RS-Autopilot-Backend" /B "%PYTHON_EXE%" cli.py serve > logs\backend.log 2>&1
+echo [OK] Backend starting at http://localhost:15177
 
 echo.
 echo   RS-Autopilot is running
-echo   Backend:  http://localhost:5000
-echo   Frontend: http://localhost:5173
+echo   Open:  http://localhost:15177
 echo.
 echo   stop.bat   - Stop backend and frontend
 echo   status.bat - Show status
@@ -78,4 +78,4 @@ echo   status.bat - Show status
 echo.
 echo [..] Opening browser...
 timeout /t 3 /nobreak >nul
-start "" http://127.0.0.1:5173/#/
+start "" http://127.0.0.1:15177/#/

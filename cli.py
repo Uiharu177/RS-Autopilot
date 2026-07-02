@@ -50,13 +50,17 @@ def main():
         logger.info(f"连接结果: {'成功' if status else '失败'}")
 
     elif args.command == "serve":
-        from resonance.server.app import app
+        from resonance.server.app import app, _register_frontend
         import resonance.server.websocket  # noqa: F401  register /ws route
         from resonance.server.routes import register_blueprints
         register_blueprints(app)
-        logger.bind(skip_ws=True).info("启动 Web 服务器: http://localhost:5000")
+        _register_frontend()
+        logger.bind(skip_ws=True).info("启动 Web 服务器: http://localhost:15177")
         logger.bind(skip_ws=True).info("WebSocket 日志+截图推送已启用")
-        app.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False)
+        from resonance.server.app import _frontend_dist
+        if _frontend_dist.is_dir() and (_frontend_dist / "index.html").is_file():
+            logger.bind(skip_ws=True).info("前端已托管，访问 http://localhost:15177 即可")
+        app.run(host="127.0.0.1", port=15177, debug=False, use_reloader=False)
 
     elif args.command == "screenshot":
         from resonance.device.device import connect, screenshot_image

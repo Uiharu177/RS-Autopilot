@@ -3,7 +3,7 @@ chcp 65001 >nul
 cd /d "%~dp0"
 
 echo [..] Stopping backend...
-for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr /C:":5000 " ^| findstr "LISTENING"') do call :kill_port %%a 5000 python Backend
+for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr /C:":15177 " ^| findstr "LISTENING"') do call :kill_port %%a 15177 python Backend
 echo [..] Stopping frontend...
 for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr /C:":5173 " ^| findstr "LISTENING"') do call :kill_port %%a 5173 node Frontend
 goto :after_kill_port

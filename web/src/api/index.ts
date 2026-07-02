@@ -1,7 +1,7 @@
 import axios from 'axios'
 
-export const API_ORIGIN = 'http://127.0.0.1:5000'
-export const WS_ORIGIN = 'ws://127.0.0.1:5000'
+export const API_ORIGIN = 'http://127.0.0.1:15177'
+export const WS_ORIGIN = 'ws://127.0.0.1:15177'
 export const API_BASE = `${API_ORIGIN}/api`
 
 export function getErrorMessage(error: unknown, fallback: string) {
