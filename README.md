@@ -71,7 +71,16 @@
 
 > 遇到问题时，如有必要可寻求 AI 帮助，把报错信息和当前操作贴给 AI 通常能快速定位问题。
 
-### 1. 安装 Python
+### 1. 克隆项目
+
+> 执行路径：你希望存放的位置
+
+```
+git clone https://github.com/Uiharu177/RS-Autopilot.git
+cd RS-Autopilot
+```
+
+### 2. 安装 Python
 下载并安装 Python 3.11 或 3.12，安装时勾选 "Add Python to PATH"。
 
 > 执行路径：任意
@@ -81,7 +90,7 @@
 python --version
 ```
 
-### 2. 安装 Node.js
+### 3. 安装 Node.js
 下载并安装 Node.js 18 或更高版本（用于首次构建前端，运行时不需要）。
 
 > 执行路径：任意
@@ -91,7 +100,7 @@ python --version
 node --version
 ```
 
-### 3. 安装 Python 依赖
+### 4. 安装 Python 依赖
 
 > 执行路径：项目根目录
 
@@ -105,7 +114,7 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 4. 启动
+### 5. 启动
 
 > 执行路径：项目根目录
 
@@ -126,7 +135,7 @@ start.bat
 python cli.py serve
 ```
 
-### 5. 配置模拟器
+### 6. 配置模拟器
 浏览器打开后进入「设备配置」→「扫描」→ 选中模拟器 →「使用此设备」
 或启动前手动复制 `config/app.example.json` 为 `config/app.json` 填写设备信息。
 

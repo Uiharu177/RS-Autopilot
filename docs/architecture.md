@@ -2,8 +2,8 @@
 
 ## 技术栈
 
-Python 3.12 / Flask + simple-websocket / Vue 3 + Naive UI
-ONNX PaddleOCR / OpenCV / ADB / MuMu IPC
+Python 3.11/3.12 / Flask + simple-websocket / Vue 3 + Naive UI
+ONNX PaddleOCR / OpenCV / ADB / MuMu IPC / DroidCast / Scrcpy
 
 ## 分层架构
 
@@ -22,14 +22,14 @@ Scene Recognizer → 场景识别
   ↓
 Vision → OCR / Template / Image
   ↓
-Device → ADB / NEMU IPC
+  Device → ADB / NEMU / DroidCast / Scrcpy
 ```
 
 ### 各层职责
 
 | 层 | 职责 |
 |---|------|
-| Device | 统一接口：截图、点击、启动/关闭游戏。NEMU 连接分段化——`connect()` 只拿 IPC 连接，display_id 首次截图时懒加载 |
+| Device | 统一接口：截图、点击、启动/关闭游戏。支持 4 种截图方式（ADB/NEMU/DroidCast/Scrcpy）和 3 种触控方式（ADB/NEMU/Scrcpy），失败自动降级 ADB。NEMU 连接分段化——`connect()` 只拿 IPC 连接，display_id 首次截图时懒加载 |
 | Vision | ONNX OCR 裁剪/缓存、模板匹配、BGR/HSV 颜色判断 |
 | Scene | 级联 detector 识别当前页面，场景转移图引导恢复 |
 | Solvers | boot (万能启动)、trade (环线/端点跑商编排)、navigation (地图导航/行车监听)、recovery (接管/纠错) |
@@ -37,6 +37,17 @@ Device → ADB / NEMU IPC
 | Server | REST API + WebSocket 日志/截图推送 |
 
 ## 设备连接策略
+
+### 截图/触控方式
+
+| 方式 | 截图 | 触控 | 原理 | 要求 |
+|------|------|------|------|------|
+| ADB | screencap | input tap/swipe | ADB 守护进程 | 无额外依赖 |
+| NEMU | MuMu IPC | MuMu IPC | nemu_dll.dll | MuMu 12 模拟器 |
+| DroidCast | HTTP Java 服务 | 委托 ADB | APK 安装到模拟器 | DroidCast APK（未测试） |
+| Scrcpy | H.264 视频流 | 控制通道 | scrcpy-server.jar + PyAV | scrcpy jar + `pip install av`（未测试） |
+
+`connect()` 按优先级选设备：**Scrcpy > NEMU > DroidCast > ADB**，连接失败自动降级到 ADB。
 
 ### NEMU 懒加载
 
@@ -49,10 +60,11 @@ Device → ADB / NEMU IPC
 
 ### STOP 守卫
 
-`kill()` → `am force-stop` + `STOP = True` + `_is_connected = False`。此后：
+`stop()` 设 `STOP = True`（不杀游戏）。此后：
 - `_ensure_connected()` 检测 `STOP` 直接返回，不重连、不清标志
+- `screenshot()` / `screenshot_image()` 检测 `STOP` 抛出 `StopExecution`
 - `NEMU.connect()` 不再内部 auto-start 游戏（启动权在 `boot_game()`）
-- 前端轮询 `/status/scene` 时截图失败返回 409，不触发重连
+- `kill()` 独立调用 → `am force-stop` 关闭游戏进程（与 STOP 无关）
 
 ## 启动流程（boot_game)
 
@@ -94,17 +106,28 @@ A→B(买→卖) → B→C(买→卖) → C→D(买→卖) → D→A(买→卖)
 体力检查通过？→ 继续
 体力不足：
   use_stamina_item? → 尝试使用道具 → 成功继续 / 失败走下一步
-  is_exit_on_fatigue? → kill() + STOP
+  is_exit_on_fatigue? → STOP = True（停止脚本，不杀游戏）
   两开关都关 → warning 继续（影响议价）
 ```
 
-### 停止信号
+### 停止与后置动作
 
-STOP 标志位检查点：
-- `_transition_locked` 每轮前
-- `_run_page_flow_locked` 轮间
-- `screenshot()` / `screenshot_image()` 入口
-- 导航、交易所等主要操作边界
+脚本内部的停止逻辑 **只设 STOP 标志或 return**，不再内联 kill 游戏进程。停止后执行什么由 `on_stop_action` 配置决定：
+
+| 值 | 行为 | 说明 |
+|----|------|------|
+| `stay_there` | 停在原地（默认） | 脚本停止，游戏保持当前界面 |
+| `goto_main` | 返回主界面 | 调用 `safe_go_home()` 回到大地图 |
+| `close_game` | 关闭游戏 | `am force-stop` 强制关闭游戏进程 |
+
+停止触发场景：
+- 跑商全部轮次完成
+- 归位/轮次失败 + `is_exit_on_failure`
+- 疲劳 + `is_exit_on_fatigue`
+- 用户点击前端「停止」
+- `StopExecution` 异常
+
+以上任意场景的退出路径都会走到 `_transition_locked` / `_run_page_flow_locked` 的 `try/finally`，在 `finally` 中执行 `_execute_on_stop_action()`。`is_exit_on_failure` 和 `is_exit_on_fatigue` 只控制 **是否停止脚本**，不决定是否杀游戏。
 
 ## 恢复与纠错
 

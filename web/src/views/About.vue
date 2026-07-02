@@ -49,20 +49,28 @@
       <n-list bordered style="margin-bottom: 16px">
         <n-list-item>
           <template #prefix><n-tag size="small" type="primary">1</n-tag></template>
+          <div><strong>克隆项目</strong></div>
+          <div style="color: #94a3b8; font-size: 13px; margin: 4px 0">执行路径：你希望存放的位置</div>
+          <div>克隆仓库并进入项目目录：</div>
+          <div><n-text code>git clone https://github.com/Uiharu177/RS-Autopilot.git</n-text></div>
+          <div><n-text code>cd RS-Autopilot</n-text></div>
+        </n-list-item>
+        <n-list-item>
+          <template #prefix><n-tag size="small" type="primary">2</n-tag></template>
           <div><strong>安装 Python</strong>：下载并安装 Python 3.11 或 3.12，安装时勾选 "Add Python to PATH"。</div>
           <div style="color: #94a3b8; font-size: 13px; margin: 4px 0">执行路径：任意</div>
           <div>验证安装：</div>
           <div><n-text code>python --version</n-text></div>
         </n-list-item>
         <n-list-item>
-          <template #prefix><n-tag size="small" type="primary">2</n-tag></template>
+          <template #prefix><n-tag size="small" type="primary">3</n-tag></template>
           <div><strong>安装 Node.js</strong>：下载并安装 Node.js 18 或更高版本（用于首次构建前端，运行时不需要）。</div>
           <div style="color: #94a3b8; font-size: 13px; margin: 4px 0">执行路径：任意</div>
           <div>验证安装：</div>
           <div><n-text code>node --version</n-text></div>
         </n-list-item>
         <n-list-item>
-          <template #prefix><n-tag size="small" type="primary">3</n-tag></template>
+          <template #prefix><n-tag size="small" type="primary">4</n-tag></template>
           <div><strong>安装 Python 依赖</strong></div>
           <div style="color: #94a3b8; font-size: 13px; margin: 4px 0">执行路径：项目根目录</div>
           <div>升级 pip（可选）：</div>
@@ -71,7 +79,7 @@
           <div><n-text code>pip install -r requirements.txt</n-text></div>
         </n-list-item>
         <n-list-item>
-          <template #prefix><n-tag size="small" type="primary">4</n-tag></template>
+          <template #prefix><n-tag size="small" type="primary">5</n-tag></template>
           <div><strong>启动</strong>：会自动安装前端依赖、构建前端、启动后端服务（端口 15177，前端由后端托管）并打开浏览器 http://127.0.0.1:15177/#/</div>
           <div style="color: #94a3b8; font-size: 13px; margin: 4px 0">执行路径：项目根目录</div>
           <div><n-text code>start.bat</n-text></div>
@@ -80,7 +88,7 @@
           <div><n-text code>python cli.py serve</n-text></div>
         </n-list-item>
         <n-list-item>
-          <template #prefix><n-tag size="small" type="primary">5</n-tag></template>
+          <template #prefix><n-tag size="small" type="primary">6</n-tag></template>
           <div><strong>配置模拟器</strong>：浏览器打开后进入「设备配置」→「扫描」→ 选中模拟器 →「使用此设备」；或启动前手动复制 <n-text code>config/app.example.json</n-text> 为 <n-text code>config/app.json</n-text> 填写设备信息。</div>
         </n-list-item>
       </n-list>
