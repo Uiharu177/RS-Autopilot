@@ -63,7 +63,7 @@
 ## 环境要求
 
 - **OS**: Windows 10/11
-- **Python**: 3.11 或 3.12
+- **Python**: 3.11 或 3.12 — [下载](https://www.python.org/downloads/)（安装时勾选"Add Python to PATH"）
 - **Node.js**: 18+（前端需要）
 - **模拟器**: [MuMu 模拟器 12](https://mumu.163.com/mumu12/)
 
