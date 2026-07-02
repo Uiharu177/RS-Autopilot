@@ -92,6 +92,14 @@ resonance serve              # 或仅启动后端 API
 > - `resonance serve` 只启动后端 API（端口 5000），不含前端界面
 > - 已有 `pip install -e .` 环境的可跳过前两步，直接 `resonance serve`
 
+## 更新
+
+```bash
+git pull                              # 拉取最新代码
+pip install -r requirements.txt       # 更新 Python 依赖（安全，幂等）
+cd web && npm install && cd ..        # 更新前端依赖（安全，幂等）
+```
+
 ## CLI 命令
 
 ```
