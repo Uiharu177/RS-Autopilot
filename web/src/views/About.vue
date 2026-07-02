@@ -16,7 +16,7 @@
     <n-card :bordered="false" style="max-width: 800px">
       <n-h1>RS-Autopilot — RS自动驾驶</n-h1>
       <n-p>
-        <n-text strong>RS-Autopilot</n-text>（RS自动驾驶）是《雷索纳斯》(Resonance Solstice) 手游的自动化工具，支持自动跑商相关的核心玩法。技术栈：Python / Flask / ADB / MuMu IPC / DroidCast / Scrcpy / OCR / Vue 3
+        <n-text strong>RS-Autopilot</n-text>（RS自动驾驶）是《雷索纳斯》(Resonance Solstice) 手游的自动化工具，支持自动跑商相关的核心玩法。
       </n-p>
 
       <n-divider />
@@ -40,12 +40,12 @@
       <n-ul>
         <n-li><strong>OS</strong>: Windows 10/11</n-li>
         <n-li><strong>Python</strong>: 3.11 或 3.12 — <n-a href="https://www.python.org/downloads/" target="_blank">下载</n-a>（安装时勾选"Add Python to PATH"）</n-li>
-        <n-li><strong>Node.js</strong>: 18+ — <n-a href="https://nodejs.org/" target="_blank">下载</n-a></n-li>
+        <n-li><strong>Node.js</strong>: 18+（首次构建前端需要，运行时不需要）— <n-a href="https://nodejs.org/" target="_blank">下载</n-a></n-li>
         <n-li><strong>模拟器</strong>: <n-a href="https://mumu.163.com/mumu12/" target="_blank">MuMu 模拟器 12</n-a></n-li>
       </n-ul>
 
-      <n-h2>快速开始</n-h2>
-      <n-p depth="3" style="margin-bottom: 12px">遇到问题时，如有必要可寻求 AI 帮助，把报错信息和当前操作贴给 AI 通常能快速定位问题。可将 docs/ai-agent-setup.md 喂给 agent 帮你安装。</n-p>
+      <n-h2>快速开始（首次启动）</n-h2>
+      <n-p depth="3" style="margin-bottom: 12px">遇到问题时，如有必要可寻求 AI 帮助，把报错信息和当前操作贴给 AI 通常能快速定位问题。</n-p>
       <n-list bordered style="margin-bottom: 16px">
         <n-list-item>
           <template #prefix><n-tag size="small" type="primary">1</n-tag></template>
@@ -124,7 +124,7 @@
           <tr><td>控制中心</td><td><n-text code>/</n-text></td><td>状态面板、实时日志、截图预览、任务启停</td></tr>
           <tr><td>路线编排</td><td><n-text code>/business</n-text></td><td>端点/环线跑商配置</td></tr>
           <tr><td>设备配置</td><td><n-text code>/device</n-text></td><td>模拟器扫描、连接、测速、游戏启停</td></tr>
-          <tr><td>系统设置</td><td><n-text code>/settings</n-text></td><td>体力药、停止条件、停止后动作等自动化偏好</td></tr>
+          <tr><td>系统设置</td><td><n-text code>/settings</n-text></td><td>体力药、疲劳保护等自动化偏好</td></tr>
           <tr><td>开发调试</td><td><n-text code>/debug</n-text></td><td>日志回放、截图时间线</td></tr>
           <tr><td>关于</td><td><n-text code>/about</n-text></td><td>项目说明与免责声明</td></tr>
         </tbody>
