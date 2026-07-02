@@ -27,7 +27,6 @@ taskkill /F /IM python3.exe  /FI "WINDOWTITLE eq RS-Autopilot-Backend" >nul 2>&1
 taskkill /F /IM node.exe     /FI "WINDOWTITLE eq RS-Autopilot-Frontend" >nul 2>&1
 rem Cleanup port bindings -- only kill if the process is Python/Node
 for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr /C:":15177 " ^| findstr "LISTENING"') do call :kill_port %%a 15177 python backend
-for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr /C:":5173 " ^| findstr "LISTENING"') do call :kill_port %%a 5173 node frontend
 goto :after_kill_port
 
 :kill_port
