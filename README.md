@@ -70,23 +70,27 @@
 ## 快速开始
 
 ```
-# 1. 安装 Python 依赖
-pip install -e .
+# 1. 升级 pip（解决依赖兼容问题）
+python -m pip install --upgrade pip
 
-# 2. 启动
+# 2. 安装 Python 依赖
+pip install -r requirements.txt
+
+# 3. 启动
 start.bat                    # 一键启动后端(:5000) + 前端(:5173)
 resonance serve              # 或仅启动后端 API
 
-# 3. 配置模拟器
+# 4. 配置模拟器
 #    浏览器打开 http://127.0.0.1:5173 →「设备配置」→「扫描」→「使用此设备」
 #    或启动前手动复制 config/app.example.json 为 config/app.json 填写设备信息
 ```
 
 > **注意**
-> - `pip install -e .` 必须在项目根目录执行，装完后 `resonance` 命令全局可用
+> - 依赖安装完成后还需要 `pip install -e .` 才能使用 `resonance` 命令，此步骤不会再报错
 > - `start.bat` 不需要先 `pip install`，它直接用 `python cli.py serve` 启动
 > - `start.bat` 会自动执行 `npm install` 安装前端依赖（如果还没装过）
 > - `resonance serve` 只启动后端 API（端口 5000），不含前端界面
+> - 已有 `pip install -e .` 环境的可跳过前两步，直接 `resonance serve`
 
 ## CLI 命令
 

@@ -2,6 +2,17 @@
 
 Vue 3 + TypeScript + Vite + Naive UI。
 
+## 环境准备
+
+在启动前端前，需先完成后端 Python 环境配置：
+
+```bash
+# 项目根目录执行
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+pip install -e .
+```
+
 ## 开发
 
 ```bash
