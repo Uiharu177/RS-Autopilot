@@ -49,13 +49,9 @@ if exist web\node_modules\.vite (
 
 if exist web\package.json (
     echo [..] Installing frontend dependencies...
-    call web\node_modules\.bin\vite.cmd --version >nul 2>&1
-    if %ERRORLEVEL% neq 0 (
-        echo [..] npm install...
-        pushd web
-        call npm install
-        popd
-    )
+    pushd web
+    call npm install
+    popd
 
     echo [..] Building frontend...
     pushd web
