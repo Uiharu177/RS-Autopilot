@@ -375,7 +375,7 @@ def _wait_bargain_stable(timeout=3.0):
     return _read_bargain_percent()
 
 
-def click_bargain_button(num=0, max_attempts=8):
+def click_bargain_button(num=0, max_attempts=6):
     logger.info(f"议价次数: {num}")
     attempts = 0
     while True:
