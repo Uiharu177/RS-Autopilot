@@ -171,6 +171,16 @@ export const WS_ORIGIN = 'ws://127.0.0.1:15177'
 
 > 执行路径：项目根目录
 
+### 一键更新（推荐）
+
+```
+update.bat
+```
+
+自动完成：停服 → git pull → pip install → npm install → npm run build。完成后手动执行 `start.bat` 重启即可。
+
+### 手动更新
+
 拉取最新代码：
 ```
 git pull
