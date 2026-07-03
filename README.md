@@ -127,7 +127,14 @@ start.bat
 1. 安装前端依赖（`npm install`）
 2. 构建前端到 `web/dist/`（`npm run build`）
 3. 启动后端服务，端口 15177，前端由后端托管
-4. 自动打开浏览器 http://127.0.0.1:15177/#/
+4. 轮询端口就绪后自动打开浏览器 http://127.0.0.1:15177/#/
+
+> ⚠️ **打不开网页？** 先看 `logs/backend.log` 的报错，常见原因：
+> - **依赖没装全**：重试 `pip install -r requirements.txt`
+> - **Python 是 Microsoft Store 占位符**：去 `设置 → 应用 → 高级应用设置 → 应用执行别名` 关掉 `python` / `python3` 的开关，或从 [python.org](https://www.python.org/) 重新安装并勾选 "Add Python to PATH"
+> - **端口 15177 被占用**：修改端口（见下文「端口被占用？」）或先关掉占用程序
+>
+> `start.bat` 启动后端后最多等待 30 秒，若超时会直接在窗口打印 `logs/backend.log` 最后 20 行，把这段报错贴给 AI 通常能快速定位问题。
 
 > 备选：仅启动后端 API（不含前端界面）
 

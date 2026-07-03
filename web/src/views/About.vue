@@ -80,9 +80,18 @@
         </n-list-item>
         <n-list-item>
           <template #prefix><n-tag size="small" type="primary">5</n-tag></template>
-          <div><strong>启动</strong>：会自动安装前端依赖、构建前端、启动后端服务（端口 15177，前端由后端托管）并打开浏览器 http://127.0.0.1:15177/#/</div>
+          <div><strong>启动</strong>：会自动安装前端依赖、构建前端、启动后端服务并轮询端口就绪后打开浏览器 http://127.0.0.1:15177/#/</div>
           <div style="color: #94a3b8; font-size: 13px; margin: 4px 0">执行路径：项目根目录</div>
           <div><n-text code>start.bat</n-text></div>
+          <n-alert type="warning" style="margin-top: 8px" :bordered="false">
+            <strong>打不开网页？</strong> 先看 <n-text code>logs/backend.log</n-text> 的报错，常见原因：
+            <n-ul style="margin: 4px 0 0 0; padding-left: 20px">
+              <n-li>依赖没装全：重试 <n-text code>pip install -r requirements.txt</n-text></n-li>
+              <n-li>Python 是 Microsoft Store 占位符：去 设置 → 应用 → 高级应用设置 → 应用执行别名 关掉 python / python3 的开关，或从 <n-a href="https://www.python.org/" target="_blank">python.org</n-a> 重新安装并勾选 "Add Python to PATH"</n-li>
+              <n-li>端口 15177 被占用：修改端口（见下文）或先关掉占用程序</n-li>
+            </n-ul>
+            <n-text depth="3" style="display: block; margin-top: 4px">start.bat 启动后最多等待 30 秒，超时会打印 logs/backend.log 最后 20 行。</n-text>
+          </n-alert>
           <div>备选：仅启动后端 API（不含前端界面）</div>
           <div style="color: #94a3b8; font-size: 13px; margin: 4px 0">执行路径：项目根目录</div>
           <div><n-text code>python cli.py serve</n-text></div>

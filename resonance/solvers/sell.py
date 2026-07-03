@@ -46,7 +46,7 @@ def is_empty_goods():
     return BGR(25, 33, 33) == bgr
 
 
-def click_bargain_button(num=0, max_attempts=8):
+def click_bargain_button(num=0, max_attempts=6):
     logger.info(f"议价次数: {num}")
     attempts = 0
     while True:
