@@ -165,7 +165,8 @@ class TradeRouteSolver(BaseSolver):
         """Route to loop entry: if city is in loop, start from there; otherwise cargo to first city."""
         if city_name in self.cities:
             logger.info(f"{city_name} 在环线中，先清空车厢")
-            self._sell_current_goods(0)
+            if not self._sell_current_goods(0):
+                logger.warning("清空车厢失败，可能车厢已空或无货可卖，继续")
             return city_name
 
         target = self.cities[0]
@@ -176,7 +177,7 @@ class TradeRouteSolver(BaseSolver):
 
         logger.info(f"归位：{city_name} 卖货")
         if not self._sell_current_goods(0):
-            return None
+            logger.warning("归位卖货失败，可能车厢已空或无货可卖，继续")
 
         logger.info(f"归位：{city_name} 买货")
         if not self._buy_current_city_goods(route):
