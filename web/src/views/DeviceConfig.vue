@@ -1,4 +1,5 @@
 <template>
+  <div class="page-container">
   <n-space vertical :size="20">
 
     <n-card title="连接设置">
@@ -113,6 +114,7 @@
       </n-table>
     </n-card>
   </n-space>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -151,6 +153,27 @@ const statusMessage = ref('')
 const statusType = ref<'success' | 'error' | 'warning'>('success')
 const actualMethod = ref('')
 
+function saveLocal() {
+  localStorage.setItem('deviceConfig', JSON.stringify({
+    port: port.value,
+    touchMethod: touchMethod.value,
+    screenshotMethod: screenshotMethod.value,
+    devicePath: devicePath.value,
+    deviceType: deviceType.value,
+  }))
+}
+
+function restoreLocal() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('deviceConfig') || '{}')
+    if (saved.port) port.value = saved.port
+    if (saved.touchMethod) touchMethod.value = saved.touchMethod
+    if (saved.screenshotMethod) screenshotMethod.value = saved.screenshotMethod
+    if (saved.devicePath !== undefined) devicePath.value = saved.devicePath
+    if (saved.deviceType !== undefined) deviceType.value = saved.deviceType
+  } catch {}
+}
+
 async function loadSettings() {
   try {
     const res = await api.config.get()
@@ -162,6 +185,7 @@ async function loadSettings() {
     touchMethod.value = g.touch_method || 'adb'
     screenshotMethod.value = g.screenshot_method || 'adb'
   } catch {}
+  saveLocal()
   refreshDeviceStatus()
 }
 
@@ -181,6 +205,7 @@ async function saveSettings() {
       touch_method: touchMethod.value,
       screenshot_method: screenshotMethod.value,
     })
+    saveLocal()
   } catch {}
 }
 
@@ -318,8 +343,20 @@ function applyDevice(dev: any) {
     device_index: dev.index ?? 0,
   })
   saveSettings()
+  saveLocal()
   message.success(`已应用设备: ${dev.name} (${dev.port})`)
 }
 
-onMounted(loadSettings)
+onMounted(() => {
+  restoreLocal()
+  loadSettings()
+})
 </script>
+
+<style scoped>
+.page-container {
+  height: 100%;
+  padding: 12px;
+  overflow-y: auto;
+}
+</style>

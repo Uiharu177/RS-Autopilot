@@ -1,4 +1,5 @@
 <template>
+  <div class="page-container">
   <n-space vertical :size="20">
     <n-h2>调度器管理</n-h2>
 
@@ -84,6 +85,7 @@
       </n-card>
     </n-modal>
   </n-space>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -174,3 +176,11 @@ async function removeTask(_task: any) {
 
 onMounted(fetchStatus)
 </script>
+
+<style scoped>
+.page-container {
+  height: 100%;
+  padding: 12px;
+  overflow-y: auto;
+}
+</style>

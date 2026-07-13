@@ -103,12 +103,13 @@ const wsSnapshotUrl = ref('')
 const businessConfig = ref({ buyCity: '', sellCity: '', buyCount: 0, loopCities: [] as string[] })
 let ws: WebSocket | null = null
 let wsReconnectTimer: ReturnType<typeof setTimeout> | null = null
+let wsReconnectDelay = 3000
 
 const stats = computed(() => [
-  { label: '运行阶段', value: runtime.tradePhaseText, icon: LayersOutline, color: '#3b82f6' },
-  { label: '当前计数', value: `${runtime.taskCount} 次`, icon: LayersOutline, color: '#1e293b' },
-  { label: '当前位置', value: currentSceneInfo.value.label, icon: EyeOutline, color: '#10b981' },
-  { label: '日志', value: wsConnected.value ? '在线' : '离线', icon: PhonePortraitOutline, color: wsConnected.value ? '#10b981' : '#ef4444' },
+  { label: '运行阶段', value: runtime.tradePhaseText, icon: LayersOutline, color: 'var(--primary)' },
+  { label: '当前计数', value: `${runtime.taskCount} 次`, icon: LayersOutline, color: 'var(--text-strong)' },
+  { label: '当前位置', value: currentSceneInfo.value.label, icon: EyeOutline, color: 'var(--success)' },
+  { label: '日志', value: wsConnected.value ? '在线' : '离线', icon: PhonePortraitOutline, color: wsConnected.value ? 'var(--success)' : 'var(--error)' },
 ])
 
 const snapshotImageUrl = computed(() => wsSnapshotUrl.value || debugFileUrl(snapshot.value?.screenshot))
@@ -127,7 +128,7 @@ const businessButtonText = computed(() => {
 
 async function refresh() {
   loading.value = true
-  await Promise.all([runtime.fetchStatus(), runtime.fetchScene(), loadBusinessConfig()])
+  await Promise.all([runtime.fetchStatus(), runtime.fetchScene()])
   loading.value = false
 }
 
@@ -138,6 +139,7 @@ async function loadBusinessConfig() {
     const lc = runBuy.LoopCities
     businessConfig.value = { buyCity: runBuy.BuyCity || '', sellCity: runBuy.SellCity || '', buyCount: Number(runBuy.BuyCount || 0), loopCities: Array.isArray(lc) ? lc : [] }
   } catch {
+    message.warning('跑商配置加载失败，请检查后端连接')
     businessConfig.value = { buyCity: '', sellCity: '', buyCount: 0, loopCities: [] }
   }
 }
@@ -183,6 +185,7 @@ function connectWs() {
 
   ws.onopen = () => {
     wsConnected.value = true
+    wsReconnectDelay = 3000
     ws?.send(JSON.stringify({ log: true, sc: true }))
   }
 
@@ -219,13 +222,15 @@ function scheduleReconnect() {
   if (wsReconnectTimer) return
   wsReconnectTimer = setTimeout(() => {
     wsReconnectTimer = null
+    wsReconnectDelay = Math.min(wsReconnectDelay * 2, 30000)
     connectWs()
-  }, 3000)
+  }, wsReconnectDelay)
 }
 
 onMounted(() => {
   refresh()
-  const timer = setInterval(refresh, 5000)
+  loadBusinessConfig()
+  const timer = setInterval(refresh, 15000)
   connectWs()
   onUnmounted(() => {
     clearInterval(timer)
@@ -284,13 +289,10 @@ watch(autoScrollLog, v => localStorage.setItem('autoScrollLog', String(v)))
 }
 
 .stat-chips {
-  position: absolute;
-  right: 12px;
-  top: 12px;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  z-index: 15;
+  flex-shrink: 0;
 }
 
 .top-block {
@@ -317,13 +319,13 @@ watch(autoScrollLog, v => localStorage.setItem('autoScrollLog', String(v)))
 }
 
 .stat-chip-label {
-  color: #64748b;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
 .stat-chip-value {
   font-weight: 700;
-  color: #1e293b;
+  color: var(--text-strong);
   margin-left: 2px;
   font-size: 14px;
 }
@@ -338,13 +340,13 @@ watch(autoScrollLog, v => localStorage.setItem('autoScrollLog', String(v)))
 }
 
 .step-arrow {
-  color: #3b82f6;
+  color: var(--primary);
   font-weight: bold;
   margin-right: 8px;
 }
 
 .step-text {
-  color: #334155;
+  color: var(--text-dark);
   font-weight: 500;
 }
 

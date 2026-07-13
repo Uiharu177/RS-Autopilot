@@ -13,9 +13,10 @@
           <div style="display: flex; flex-direction: column; height: 100%; gap: 20px">
             <div>
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px">
-              <span style="font-size: 13px; color: #64748b; font-weight: 600">可选城市</span>
+              <span style="font-size: 13px; color: var(--text-muted); font-weight: 600">可选城市</span>
               <n-a href="https://www.resonance-columba.com/route" target="_blank" style="font-size: 12px">科伦巴商会</n-a>
             </div>
+              <n-input v-model:value="citySearch" placeholder="搜索城市..." size="small" clearable style="margin-bottom: 8px" />
               <n-space style="flex-wrap: wrap">
                 <n-tag
                   v-for="city in availableCities"
@@ -37,13 +38,13 @@
             <n-divider dashed style="margin: 0" />
 
             <div style="flex: 1; min-height: 0; display: flex; flex-direction: column">
-              <div style="font-size: 13px; color: #64748b; margin-bottom: 12px; font-weight: 600">路线顺序</div>
+              <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px; font-weight: 600">路线顺序</div>
               <div class="route-list-container">
                 <div v-if="routeCities.length > 0" class="route-list">
                   <div v-for="(city, idx) in routeCities" :key="`${city}-${idx}`" class="route-node">
                     <div class="route-node__index">{{ idx + 1 }}</div>
                     <div class="route-node__content">
-                      <span style="font-weight: 600; color: #1e293b">{{ city }}</span>
+                      <span style="font-weight: 600; color: var(--text-strong)">{{ city }}</span>
                     </div>
                     <n-button-group size="tiny" quaternary>
                       <n-button :disabled="idx === 0" circle @click="moveUp(idx)">
@@ -154,6 +155,7 @@ const dialog = useDialog()
 
 const allCities = ref<string[]>([])
 const routeCities = ref<string[]>([])
+const citySearch = ref('')
 const buyCount = ref(3)
 const running = ref(false)
 const pageFlowLoading = ref(false)
@@ -203,14 +205,19 @@ watch([routeCities, buyCount, haggleSettings, bookSettings], () => {
 })
 
 onBeforeRouteLeave(async () => {
-  if (pendingSave) await pendingSave
   if (saveTimer) clearTimeout(saveTimer)
-  if (saveStatus.value !== 'saved') {
-    await autoSave()
+  if (pendingSave) {
+    await pendingSave
+  } else if (saveStatus.value !== 'saved') {
+    await saveConfig(false)
   }
 })
 
-const availableCities = computed(() => allCities.value)
+const availableCities = computed(() => {
+  const kw = citySearch.value.trim().toLowerCase()
+  if (!kw) return allCities.value
+  return allCities.value.filter(c => c.toLowerCase().includes(kw))
+})
 
 const previewCities = computed(() => {
   if (routeCities.value.length < 2) return routeCities.value
@@ -429,20 +436,20 @@ onUnmounted(() => {
   gap: 12px;
   padding: 10px 16px;
   background: rgba(248, 250, 252, 0.5);
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-lighter);
   border-radius: 8px;
   transition: all 0.2s;
 }
 
 .route-node:hover {
-  border-color: #3b82f6;
-  background: #eff6ff;
+  border-color: var(--primary);
+  background: var(--bg-blue-light);
 }
 
 .route-node__index {
   width: 22px;
   height: 22px;
-  background: #3b82f6;
+  background: var(--primary);
   color: white;
   border-radius: 50%;
   display: flex;
@@ -462,9 +469,9 @@ onUnmounted(() => {
   justify-content: center;
   padding: 8px;
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-faint);
   font-weight: 500;
-  background: #f1f5f9;
+  background: var(--bg-light);
   border-radius: 6px;
   margin-top: 4px;
 }
@@ -484,6 +491,6 @@ onUnmounted(() => {
 
 .config-item__label {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-muted);
 }
 </style>

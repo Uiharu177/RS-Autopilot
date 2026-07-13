@@ -17,7 +17,7 @@
             <div class="sider-header">
               <div class="sider-logo">
                 <div class="logo-box">
-                  <n-icon size="20" color="#fff"><TrainOutline /></n-icon>
+                  <n-icon size="20" color="var(--white)"><TrainOutline /></n-icon>
                 </div>
                 <div>
                   <div class="logo-title">RS-Autopilot</div>
@@ -58,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { h, ref, onMounted, provide } from 'vue'
+import { h, ref, onMounted, onUnmounted, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRuntimeStore } from '@/stores/runtime'
 import hljs from '@/utils/hljs'
@@ -80,9 +80,16 @@ const runtime = useRuntimeStore()
 const mobile = ref(window.innerWidth < 800)
 provide('mobile', mobile)
 
+function handleResize() {
+  mobile.value = window.innerWidth < 800
+}
+
 onMounted(() => {
-  const onResize = () => { mobile.value = window.innerWidth < 800 }
-  window.addEventListener('resize', onResize)
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 
 const themeOverrides: GlobalThemeOverrides = {
@@ -130,26 +137,27 @@ const themeOverrides: GlobalThemeOverrides = {
     itemHeight: '42px',
   },
   Button: {
-    textColorPrimary: '#ffffff',
-    textColorHoverPrimary: '#ffffff',
-    textColorPressedPrimary: '#ffffff',
-    textColorFocusPrimary: '#ffffff',
-    textColorInfo: '#ffffff',
-    textColorHoverInfo: '#ffffff',
-    textColorPressedInfo: '#ffffff',
-    textColorFocusInfo: '#ffffff',
-    textColorSuccess: '#ffffff',
-    textColorHoverSuccess: '#ffffff',
-    textColorPressedSuccess: '#ffffff',
-    textColorFocusSuccess: '#ffffff',
-    textColorWarning: '#ffffff',
-    textColorHoverWarning: '#ffffff',
-    textColorPressedWarning: '#ffffff',
-    textColorFocusWarning: '#ffffff',
-    textColorError: '#ffffff',
-    textColorHoverError: '#ffffff',
-    textColorPressedError: '#ffffff',
-    textColorFocusError: '#ffffff',
+    textColor: '#111827',
+    textColorHover: '#111827',
+    textColorPressed: '#111827',
+    textColorFocus: '#111827',
+    textColorTertiary: '#111827',
+    textColorPrimary: 'var(--white)',
+    textColorHoverPrimary: 'var(--white)',
+    textColorPressedPrimary: 'var(--white)',
+    textColorFocusPrimary: 'var(--white)',
+    textColorSuccess: 'var(--white)',
+    textColorHoverSuccess: 'var(--white)',
+    textColorPressedSuccess: 'var(--white)',
+    textColorFocusSuccess: 'var(--white)',
+    textColorWarning: 'var(--white)',
+    textColorHoverWarning: 'var(--white)',
+    textColorPressedWarning: 'var(--white)',
+    textColorFocusWarning: 'var(--white)',
+    textColorError: 'var(--white)',
+    textColorHoverError: 'var(--white)',
+    textColorPressedError: 'var(--white)',
+    textColorFocusError: 'var(--white)',
   },
 };
 
@@ -171,6 +179,7 @@ const mobileTabs = [
   { label: '路线编排', key: '/business', icon: TrainOutline },
   { label: '设备配置', key: '/device', icon: PhonePortraitOutline },
   { label: '系统设置', key: '/settings', icon: SettingsOutline },
+  { label: '调试', key: '/debug', icon: EyeOutline },
   { label: '关于', key: '/about', icon: InformationCircleOutline },
 ]
 
@@ -184,7 +193,7 @@ function handleMenuSelect(key: string) {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: url('https://img.zcool.cn/community/0150965e1ce0bca801216518471b48.jpg@1280w_1l_2o_100sh.jpg') no-repeat center center;
+  background: var(--white);
   background-size: cover;
 }
 
@@ -213,7 +222,7 @@ function handleMenuSelect(key: string) {
 .logo-box {
   width: 32px;
   height: 32px;
-  background: #2563eb;
+  background: var(--primary-hover);
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -224,13 +233,13 @@ function handleMenuSelect(key: string) {
 .logo-title {
   font-weight: 700;
   font-size: 18px;
-  color: #111827;
+  color: var(--text-body);
   letter-spacing: -0.5px;
 }
 
 .logo-sub {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-faint);
   font-weight: 500;
 }
 
@@ -259,12 +268,12 @@ function handleMenuSelect(key: string) {
   gap: 2px;
   cursor: pointer;
   padding: 6px 12px;
-  color: #94a3b8;
+  color: var(--text-faint);
   transition: color 0.2s;
 }
 
 .mobile-tab.active {
-  color: #2563eb;
+  color: var(--primary-hover);
 }
 
 .mobile-tab-label {
@@ -286,7 +295,7 @@ function handleMenuSelect(key: string) {
   top: 6px;
   bottom: 6px;
   width: 3px;
-  background: #2563eb;
+  background: var(--primary-hover);
   border-radius: 0 2px 2px 0;
 }
 

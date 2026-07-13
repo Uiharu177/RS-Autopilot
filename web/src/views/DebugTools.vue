@@ -15,7 +15,7 @@
           @click="selectFile(f)"
         >
           <div class="debug-file-item">
-            <n-icon size="16" color="#94a3b8"><DocumentOutline /></n-icon>
+            <n-icon size="16" color="var(--text-faint)"><DocumentOutline /></n-icon>
             <div class="debug-file-info">
               <div class="debug-file-name">{{ f.name }}</div>
               <div class="debug-file-meta">{{ (f.size / 1024).toFixed(1) }} KB</div>
@@ -46,7 +46,7 @@
             class="debug-screenshot-img"
           />
           <div v-else class="debug-screenshot-empty">
-            <n-icon size="48" color="#64748b"><ImageOutline /></n-icon>
+            <n-icon size="48" color="var(--text-muted)"><ImageOutline /></n-icon>
             <span>该节点无截图</span>
           </div>
           <div class="debug-screenshot-time" v-if="currentTime">
@@ -60,7 +60,8 @@
               <template #icon><n-icon><ChevronBackOutline /></n-icon></template>
             </n-button>
             <n-slider
-              v-model:value="currentIndex"
+              :value="sliderValue"
+              @update:value="onSliderInput"
               :min="0"
               :max="Math.max(0, segments.length - 1)"
               :step="1"
@@ -85,7 +86,7 @@
     <div class="debug-main debug-main--empty" v-else>
       <n-empty description="从左侧选择日志文件" size="large">
         <template #extra>
-          <n-icon size="64" color="#cbd5e1"><DocumentOutline /></n-icon>
+          <n-icon size="64" color="var(--text-light)"><DocumentOutline /></n-icon>
         </template>
       </n-empty>
     </div>
@@ -105,6 +106,7 @@ const logFiles = ref<any[]>([])
 const selectedFile = ref('')
 const segments = ref<{ time: string; log_lines: string[]; screenshot: string | null }[]>([])
 const currentIndex = ref(0)
+const sliderValue = ref(0)
 const loading = ref(false)
 const logEl = ref<HTMLElement | null>(null)
 
@@ -130,6 +132,7 @@ async function selectFile(f: any) {
   selectedFile.value = f.name
   segments.value = []
   currentIndex.value = 0
+  sliderValue.value = 0
   loading.value = true
   try {
     const res = await api.debug.timeline(f.name)
@@ -148,7 +151,17 @@ function nextSegment() {
   if (currentIndex.value < segments.value.length - 1) currentIndex.value++
 }
 
-watch(currentIndex, () => {
+let sliderTimer: ReturnType<typeof setTimeout> | null = null
+function onSliderInput(v: number) {
+  sliderValue.value = v
+  if (sliderTimer) clearTimeout(sliderTimer)
+  sliderTimer = setTimeout(() => {
+    currentIndex.value = v
+  }, 150)
+}
+
+watch(currentIndex, (v) => {
+  sliderValue.value = v
   nextTick(() => {
     if (logEl.value) logEl.value.scrollTop = 0
   })
@@ -171,7 +184,7 @@ onMounted(() => {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid var(--border-light);
   background: rgba(255, 255, 255, 0.6);
 }
 
@@ -199,7 +212,7 @@ onMounted(() => {
 .debug-sidebar-title {
   font-weight: 600;
   font-size: 14px;
-  color: #1e293b;
+  color: var(--text-strong);
 }
 
 .debug-file-list {
@@ -222,7 +235,7 @@ onMounted(() => {
 
 .debug-file-name {
   font-size: 13px;
-  color: #1e293b;
+  color: var(--text-strong);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -230,7 +243,7 @@ onMounted(() => {
 
 .debug-file-meta {
   font-size: 11px;
-  color: #94a3b8;
+  color: var(--text-faint);
 }
 
 .debug-main-header {
@@ -239,13 +252,13 @@ onMounted(() => {
   justify-content: space-between;
   padding: 8px 16px;
   flex-shrink: 0;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .debug-main-title {
   font-weight: 600;
   font-size: 14px;
-  color: #1e293b;
+  color: var(--text-strong);
 }
 
 .debug-main-body {
@@ -270,8 +283,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #0f172a;
-  border-bottom: 1px solid #334155;
+  background: var(--bg-dark);
+  border-bottom: 1px solid var(--border-dark);
 }
 
 .debug-screenshot-img {
@@ -284,7 +297,7 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 14px;
 }
 
@@ -307,8 +320,8 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
-  background: #f1f5f9;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--bg-light);
+  border-bottom: 1px solid var(--border-light);
   flex-shrink: 0;
 }
 
@@ -318,7 +331,7 @@ onMounted(() => {
 
 .debug-timeline-pos {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-muted);
   white-space: nowrap;
   min-width: 60px;
   text-align: right;
@@ -327,7 +340,7 @@ onMounted(() => {
 .debug-log {
   flex: 1;
   overflow-y: auto;
-  background: #0f172a;
+  background: var(--bg-dark);
   padding: 12px 16px;
 }
 
@@ -336,17 +349,17 @@ onMounted(() => {
   font-family: 'Cascadia Code', Consolas, monospace;
   font-size: 13px;
   line-height: 1.6;
-  color: #cbd5e1;
+  color: var(--text-light);
   white-space: pre-wrap;
   word-break: break-all;
 }
 
 :deep(.n-list-item.active) {
-  background: #eff6ff !important;
+  background: var(--bg-blue-light) !important;
 }
 
 :deep(.n-list-item.active .debug-file-name) {
-  color: #2563eb;
+  color: var(--primary-hover);
   font-weight: 600;
 }
 </style>

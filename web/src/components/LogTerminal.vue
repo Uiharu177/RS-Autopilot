@@ -79,7 +79,7 @@ defineExpose({
   font-family: 'Cascadia Code', Consolas, monospace;
   font-size: 13px;
   line-height: 1.75;
-  color: #e2e8f0;
+  color: var(--border-lighter);
 }
 .n-log-inner .n-scrollbar-rail {
   --n-scrollbar-rail-color: transparent;
@@ -102,26 +102,22 @@ defineExpose({
 }
 
 .hljs-time {
-  color: #64748b !important;
+  color: var(--text-muted) !important;
   font-weight: normal;
 }
 .hljs-info {
-  color: #22d3ee !important;
+  color: var(--log-cyan) !important;
   font-weight: bold;
 }
 .hljs-warning {
-  color: #fbbf24 !important;
+  color: var(--log-amber) !important;
   font-weight: bold;
 }
 .hljs-error {
-  color: #f87171 !important;
-  font-weight: bold;
-}
-.hljs-success {
-  color: #34d399 !important;
+  color: var(--log-red) !important;
   font-weight: bold;
 }
 .hljs-built_in {
-  color: #64748b !important;
+  color: var(--text-muted) !important;
 }
 </style>
