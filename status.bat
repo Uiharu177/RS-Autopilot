@@ -1,19 +1,18 @@
 @echo off
-chcp 65001 >nul
 cd /d "%~dp0"
-echo === RS-Autopilot Ф°█Е┼║Г┼╤Ф─│ ===
+echo === RS-Autopilot ╥ЧнЯв╢л╛ ===
 
 netstat -ano 2>nul | findstr /C:"LISTENING" | findstr /C:":15177 " >nul
 if %ERRORLEVEL%==0 (
-    echo   Е░▌Г╚╞О╪ Х©░Х║▄Д╦╜  http://localhost:15177
+    echo   ╨С╤кё╨ткппжп  http://localhost:15177
 ) else (
-    echo   Е░▌Г╚╞О╪ Е╥╡Е│°Ф╜╒
+    echo   ╨С╤кё╨рямёж╧
 )
 
-echo   Е┴█Г╚╞О╪ Г■╠Е░▌Г╚╞Ф▐░Д╬⌡ ^(Ф┴⌠Е╪─ http://localhost:15177^)
+echo   г╟╤кё╨си╨С╤клА╧╘ ^(╢Р©╙ http://localhost:15177^)
 
 if exist logs\runtime.log (
-    for %%s in (logs\runtime.log) do echo   Ф≈╔Е©≈Ф√┤Д╩╤О╪ %%~zs Е╜≈Х┼┌
+    for %%s in (logs\runtime.log) do echo   хуж╬нд╪Чё╨%%~zs вж╫з
 ) else (
-    echo   Ф≈╔Е©≈Ф√┤Д╩╤О╪ Ф≈═
+    echo   хуж╬нд╪Чё╨нч
 )

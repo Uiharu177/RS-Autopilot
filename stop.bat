@@ -1,20 +1,19 @@
 @echo off
-chcp 65001 >nul
 cd /d "%~dp0"
 
-echo [..] æ­£åœ¨åœæ­¢æœåŠ¡...
-for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr /C:":15177 " ^| findstr "LISTENING"') do call :kill_port %%a 15177 python åç«¯
+echo [..] ÕıÔÚÍ£Ö¹·şÎñ...
+for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr /C:":15177 " ^| findstr "LISTENING"') do call :kill_port %%a 15177 python ºó¶Ë
 goto :after_kill_port
 
 :kill_port
 tasklist /FI "PID eq %1" /FO CSV /NH 2>nul | findstr /I "%3" >nul
 if errorlevel 1 (
-    echo [WARN] %4 PID %1 ä¸æ˜¯ %3 è¿›ç¨‹ï¼Œè·³è¿‡
+    echo [WARN] %4 PID %1 ²»ÊÇ %3 ½ø³Ì£¬Ìø¹ı
 ) else (
     taskkill /F /PID %1 >nul 2>&1
-    echo [OK] å·²åœæ­¢ %4 è¿›ç¨‹ %1
+    echo [OK] ÒÑÍ£Ö¹ %4 ½ø³Ì %1
 )
 exit /b
 
 :after_kill_port
-echo [OK] RS-Autopilot å·²åœæ­¢
+echo [OK] RS-Autopilot ÒÑÍ£Ö¹
