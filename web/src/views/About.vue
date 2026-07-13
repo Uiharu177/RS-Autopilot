@@ -113,6 +113,13 @@
 
       <n-h2>更新</n-h2>
       <div style="color: #94a3b8; font-size: 13px; margin: 4px 0">执行路径：项目根目录</div>
+      <div><strong>一键更新（推荐）：</strong></div>
+      <div><n-text code>update.bat</n-text></div>
+      <n-p depth="3">自动停服、暂存本地改动（含未跟踪文件）、拉取最新代码、恢复本地改动、更新依赖并重新构建前端。完成后执行 <n-text code>start.bat</n-text> 重启。</n-p>
+      <n-alert type="warning" :bordered="false" style="margin-bottom: 12px">
+        若恢复本地改动时发生冲突，更新脚本会停止并提示手动解决，不会继续安装依赖或构建。没有修改过项目文件的普通用户通常不会遇到此情况。
+      </n-alert>
+      <div><strong>手动更新：</strong></div>
       <div>拉取最新代码：</div>
       <div><n-text code>git pull</n-text></div>
       <div>更新 Python 依赖：</div>

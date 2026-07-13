@@ -177,7 +177,9 @@ export const WS_ORIGIN = 'ws://127.0.0.1:15177'
 update.bat
 ```
 
-自动完成：停服 → git pull → pip install → npm install → npm run build。完成后手动执行 `start.bat` 重启即可。
+自动完成：停服 → 暂存本地改动（含未跟踪文件）→ `git pull --rebase` → 恢复本地改动 → 更新 Python/前端依赖 → 重新构建前端。完成后手动执行 `start.bat` 重启即可。
+
+> 若恢复本地改动时发生冲突，脚本会停止并提示手动解决，不会继续安装依赖或构建。没有修改过项目文件的普通用户通常不会遇到此情况。
 
 ### 手动更新
 
