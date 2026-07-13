@@ -100,34 +100,40 @@ A→B(买→卖) → B→C(买→卖) → C→D(买→卖) → D→A(买→卖)
 
 ### 体力检查
 
-每城一次（卖货后买货前），通过三个开关独立控制：
+每城一次（卖货后买货前），通过 `use_stamina_item` 与 `fatigue_action` 两个开关控制：
 
 ```
 体力检查通过？→ 继续
 体力不足：
   use_stamina_item? → 尝试使用道具 → 成功继续 / 失败走下一步
-  is_exit_on_fatigue? → STOP = True（停止脚本，不杀游戏）
-  两开关都关 → warning 继续（影响议价）
+  fatigue_action != "none"? → STOP = True（停止脚本，不杀游戏），记下 fatigue_action 供 finally 执行
+  fatigue_action == "none" → warning 继续（影响议价）
 ```
 
 ### 停止与后置动作
 
-脚本内部的停止逻辑 **只设 STOP 标志或 return**，不再内联 kill 游戏进程。停止后执行什么由 `on_stop_action` 配置决定：
+脚本内部的停止逻辑 **只设 STOP 标志或 return**，不再内联 kill 游戏进程。停止后执行什么由 `fatigue_action` 与 `on_stop_action` 两个配置决定，二者取值相同（`fatigue_action` 额外允许 `none`）：
 
 | 值 | 行为 | 说明 |
 |----|------|------|
-| `stay_there` | 停在原地（默认） | 脚本停止，游戏保持当前界面 |
+| `stay_there` | 停在原地 | 脚本停止，游戏保持当前界面（`on_stop_action` 默认值） |
 | `goto_main` | 返回主界面 | 调用 `safe_go_home()` 回到大地图 |
 | `close_game` | 关闭游戏 | `am force-stop` 强制关闭游戏进程 |
+| `none` | 不停止 | 仅 `fatigue_action` 可取：体力不足时不触发停止（默认） |
 
 停止触发场景：
 - 跑商全部轮次完成
-- 归位/轮次失败 + `is_exit_on_failure`
-- 疲劳 + `is_exit_on_fatigue`
+- 归位/轮次失败 → 直接 `return`（不再有失败退出开关）
+- 疲劳 + `fatigue_action != "none"` → 设 STOP
 - 用户点击前端「停止」
 - `StopExecution` 异常
 
-以上任意场景的退出路径都会走到 `_transition_locked` / `_run_page_flow_locked` 的 `try/finally`，在 `finally` 中执行 `_execute_on_stop_action()`。`is_exit_on_failure` 和 `is_exit_on_fatigue` 只控制 **是否停止脚本**，不决定是否杀游戏。
+以上任意场景的退出路径都会走到 `_transition_locked` / `_run_page_flow_locked` 的 `try/finally`。`finally` 中按以下优先级执行 **一次** 后置动作：
+
+1. 若疲劳触发停止（`_fatigue_action` 已设置）→ 执行 `_execute_action(fatigue_action)`，并清空 `_fatigue_action`
+2. 否则 → 执行 `_execute_on_stop_action()`（即 `on_stop_action`）
+
+即 `fatigue_action` 优先于 `on_stop_action`：疲劳导致的停止按 `fatigue_action` 处置，其余停止场景按 `on_stop_action` 处置。两者都只决定 **停止后对游戏做什么**，不决定是否停止脚本。
 
 ## 恢复与纠错
 

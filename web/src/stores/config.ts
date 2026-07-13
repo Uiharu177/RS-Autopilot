@@ -2,8 +2,21 @@ import { ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import api from '@/api'
 
+type StopAction = 'stay_there' | 'goto_main' | 'close_game'
+type FatigueAction = 'none' | StopAction
+
+interface GlobalConfig {
+  use_stamina_item: boolean
+  on_stop_action: StopAction
+  fatigue_action: FatigueAction
+}
+
 export const useConfigStore = defineStore('config', () => {
-  const globalConfig = ref<Record<string, boolean>>({})
+  const globalConfig = ref<GlobalConfig>({
+    use_stamina_item: false,
+    on_stop_action: 'stay_there',
+    fatigue_action: 'none',
+  })
   const cityConfig = ref<Record<string, unknown>>({})
   const deviceSettings = ref({ port: 16384, touch_method: 'adb', screenshot_method: 'adb' })
   const loaded = ref(false)
@@ -14,9 +27,9 @@ export const useConfigStore = defineStore('config', () => {
       const data = res.data
       const gc = data.config?.global_config || {}
       globalConfig.value = {
-        is_exit_on_failure: gc.is_exit_on_failure ?? false,
-        is_exit_on_fatigue: gc.is_exit_on_fatigue ?? false,
         use_stamina_item: gc.use_stamina_item ?? false,
+        on_stop_action: gc.on_stop_action ?? 'stay_there',
+        fatigue_action: gc.fatigue_action ?? 'none',
       }
       const app = data.app?.Global || {}
       deviceSettings.value.port = app.device?.port ?? 16384

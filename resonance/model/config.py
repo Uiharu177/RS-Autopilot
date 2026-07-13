@@ -29,10 +29,9 @@ class RSBModel(BaseModel):
 class GlobalConfigModel(BaseModel):
     is_transit_assist: bool = False
     is_auto_pick: bool = False
-    is_exit_on_failure: bool = False
-    is_exit_on_fatigue: bool = False
     use_stamina_item: bool = False
     on_stop_action: str = "stay_there"
+    fatigue_action: str = "none"
 
 
 class Config(BaseModel):

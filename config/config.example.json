@@ -3,7 +3,8 @@
   "global_config": {
     "is_transit_assist": false,
     "is_auto_pick": false,
-    "is_exit_on_failure": true,
-    "is_exit_on_fatigue": true
+    "use_stamina_item": false,
+    "on_stop_action": "stay_there",
+    "fatigue_action": "none"
   }
 }

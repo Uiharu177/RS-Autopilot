@@ -59,6 +59,7 @@ class TradeRouteSolver(BaseSolver):
         else:
             self.cities = []
         self.routes: Optional[RoutesModel] = None
+        self._fatigue_action: Optional[str] = None
         super().__init__()
 
     def _build_routes(self):
@@ -118,7 +119,7 @@ class TradeRouteSolver(BaseSolver):
             logger.debug("体力检查通过")
             return True
 
-        logger.warning(f"体力不足: use_stamina_item={config.global_config.use_stamina_item}, is_exit_on_fatigue={config.global_config.is_exit_on_fatigue}")
+        logger.warning(f"体力不足: use_stamina_item={config.global_config.use_stamina_item}, fatigue_action={config.global_config.fatigue_action}")
 
         if config.global_config.use_stamina_item:
             logger.info("尝试使用体力药")
@@ -128,12 +129,14 @@ class TradeRouteSolver(BaseSolver):
                 return True
             logger.error("使用体力药失败")
 
-        if config.global_config.is_exit_on_fatigue:
-            logger.warning("疲劳保护触发，停止脚本")
+        fatigue_action = config.global_config.fatigue_action
+        if fatigue_action != "none":
+            logger.warning(f"疲劳保护触发: {fatigue_action}")
             device_state.STOP = True
+            self._fatigue_action = fatigue_action
             return False
 
-        logger.warning("体力不足但未启用体力药和疲劳保护，继续执行（可能无法议价）")
+        logger.warning("体力不足但未启用疲劳保护，继续执行（可能无法议价）")
         return True
 
     def _sell_current_goods(self, haggle_num: int) -> bool:
@@ -416,7 +419,12 @@ class TradeRouteSolver(BaseSolver):
                     return False
             return True
         finally:
-            self._execute_on_stop_action()
+            fatigue_action = getattr(self, "_fatigue_action", None)
+            if fatigue_action:
+                self._fatigue_action = None
+                self._execute_action(fatigue_action)
+            else:
+                self._execute_on_stop_action()
 
     def _cleanup_game(self):
         from resonance.device.adb import ADB
@@ -427,19 +435,28 @@ class TradeRouteSolver(BaseSolver):
             adb_killer.device.shell("am force-stop com.hermes.goda")
             adb_killer.kill()
 
-    def _execute_on_stop_action(self):
-        action = config.global_config.on_stop_action
+    def _execute_action(self, action: str):
+        """Execute a post-stop action: close_game / goto_main / stay_there."""
         if action == "close_game":
-            logger.info("停止后动作：关闭游戏")
+            logger.info("执行动作：关闭游戏")
             self._cleanup_game()
         elif action == "goto_main":
-            logger.info("停止后动作：返回主界面")
+            logger.info("执行动作：返回主界面")
             from resonance.solvers.recovery import safe_go_home
-            if not safe_go_home():
-                logger.warning("返回主界面失败")
+            previous_stop = device_state.STOP
+            device_state.STOP = False
+            try:
+                if not safe_go_home():
+                    logger.warning("返回主界面失败")
+            finally:
+                device_state.STOP = previous_stop
+        elif action == "stay_there":
+            pass
         else:
-            if action != "stay_there":
-                logger.warning(f"未知的 on_stop_action: {action}，默认停在原地")
+            logger.warning(f"未知动作: {action}，默认停在原地")
+
+    def _execute_on_stop_action(self):
+        self._execute_action(config.global_config.on_stop_action)
 
     def transition(self):
         """Execute configured number of complete trade route round trips."""
@@ -468,12 +485,12 @@ class TradeRouteSolver(BaseSolver):
         if not self.routes:
             self._build_routes()
 
-        normalized_city = self._normalize_takeover_city(city_name)
-        if not normalized_city:
-            logger.error("归位失败，结束跑商")
-            return True
-
         try:
+            normalized_city = self._normalize_takeover_city(city_name)
+            if not normalized_city:
+                logger.error("归位失败，结束跑商")
+                return True
+
             for round_index in range(1, count + 1):
                 if device_state.STOP:
                     logger.info("收到停止信号，结束跑商")
@@ -488,4 +505,9 @@ class TradeRouteSolver(BaseSolver):
             logger.info(f"{mode}跑商完成，共运行 {count} 轮")
             return True
         finally:
-            self._execute_on_stop_action()
+            fatigue_action = getattr(self, "_fatigue_action", None)
+            if fatigue_action:
+                self._fatigue_action = None
+                self._execute_action(fatigue_action)
+            else:
+                self._execute_on_stop_action()
