@@ -141,8 +141,6 @@ echo [..] 正在打开浏览器...
 start "" http://127.0.0.1:15177/#/
 
 echo.
-echo   服务正在后台运行，关闭此窗口不影响服务。
-echo   如需停止服务，请运行 stop.bat
 echo.
 pause >nul
 endlocal
