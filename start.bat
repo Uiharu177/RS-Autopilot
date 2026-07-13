@@ -5,9 +5,6 @@ title RS-Autopilot
 
 cd /d "%~dp0"
 
-rem === 检测 Python ===
-rem 优先使用官方 "py" 启动器，然后 python，再 python3。
-rem 同时排除 Microsoft Store 占位符（它会打开商店而不是运行）。
 set PYTHON_EXE=
 
 where py >nul 2>&1
@@ -34,7 +31,6 @@ if not defined PYTHON_EXE (
     exit /b 1
 )
 
-rem 验证 Python 能正常运行（排除 Microsoft Store 占位符）
 %PYTHON_EXE% -c "import sys; sys.exit(0)" >nul 2>&1
 if !ERRORLEVEL! neq 0 (
     echo [!!] Python 找到了但无法运行（可能是 Microsoft Store 占位符）
@@ -48,12 +44,10 @@ if !ERRORLEVEL! neq 0 (
 if not exist logs mkdir logs
 
 echo [..] 正在停止残留进程...
-rem 按窗口标题 + 可执行文件名杀掉自己的前后端进程
 taskkill /F /IM python.exe   /FI "WINDOWTITLE eq RS-Autopilot-Backend" >nul 2>&1
 taskkill /F /IM python3.exe  /FI "WINDOWTITLE eq RS-Autopilot-Backend" >nul 2>&1
 taskkill /F /IM py.exe       /FI "WINDOWTITLE eq RS-Autopilot-Backend" >nul 2>&1
 taskkill /F /IM node.exe     /FI "WINDOWTITLE eq RS-Autopilot-Frontend" >nul 2>&1
-rem 清理端口占用 -- 仅当占用进程是 Python/Node 时才杀
 for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr /C:":15177 " ^| findstr "LISTENING"') do call :kill_port %%a 15177 python 后端
 goto :after_kill_port
 
@@ -102,7 +96,6 @@ if exist web\package.json (
 )
 
 echo [..] 正在启动后端...
-rem 清空旧日志，就绪检查只看本次启动的输出
 if exist logs\backend.log type nul > logs\backend.log
 start "RS-Autopilot-Backend" /B %PYTHON_EXE% cli.py serve > logs\backend.log 2>&1
 
@@ -148,4 +141,9 @@ echo.
 echo [..] 正在打开浏览器...
 start "" http://127.0.0.1:15177/#/
 
+echo.
+echo   服务正在后台运行，关闭此窗口不影响服务
+echo   如需停止服务，请运行 stop.bat
+echo.
+pause >nul
 endlocal
