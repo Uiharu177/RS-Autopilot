@@ -129,18 +129,16 @@ if "!READY!"=="0" (
 )
 
 echo [OK] 后端已启动：http://localhost:15177
+
+echo [..] 正在打开浏览器...
+start "" http://127.0.0.1:15177/#/
+
 echo.
 echo   RS-Autopilot 正在运行
 echo   打开：http://localhost:15177
 echo.
 echo   stop.bat   - 停止后端
 echo   status.bat - 查看状态
-echo.
-
-echo [..] 正在打开浏览器...
-start "" http://127.0.0.1:15177/#/
-
-echo.
 echo.
 pause >nul
 endlocal
