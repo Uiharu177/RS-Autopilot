@@ -94,8 +94,9 @@ set STASHED=0
 set HAS_CHANGES=0
 for /f "delims=" %%s in ('git status --porcelain 2^>nul') do set HAS_CHANGES=1
 if "!HAS_CHANGES!"=="1" (
-    git stash push -u -m "update.bat auto-stash %date% %time%" 2>nul
-    if !ERRORLEVEL! equ 0 (
+    git stash push -u -m "update.bat auto-stash %date% %time%" >nul 2>nul
+    set STASH_RESULT=!ERRORLEVEL!
+    if !STASH_RESULT! equ 0 (
         echo [OK] 本地改动已暂存
         set STASHED=1
     ) else (
@@ -128,8 +129,9 @@ echo.
 rem === 步骤 6/10：恢复本地改动 ===
 if "!STASHED!"=="1" (
     echo [..] 步骤 6/10 - 恢复本地改动（git stash pop）...
-    git stash pop
-    if !ERRORLEVEL! neq 0 (
+    git stash pop >nul 2>&1
+    set POP_RESULT=!ERRORLEVEL!
+    if !POP_RESULT! neq 0 (
         echo [WARN] git stash pop 出现冲突！
         echo [..] 你的本地改动与拉取的代码存在冲突
         echo [..] 请手动解决冲突后执行：
@@ -203,5 +205,6 @@ echo   更新完成！
 echo   请运行 start.bat 启动服务
 echo ========================================
 echo.
-pause
+echo Press any key to continue . . .
+pause >nul
 endlocal
