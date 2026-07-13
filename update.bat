@@ -1,13 +1,13 @@
 @echo off
 setlocal enabledelayedexpansion
 chcp 65001 >nul
-title RS-Autopilot Update
+title RS-Autopilot 更新脚本
 cd /d "%~dp0"
 
-echo === RS-Autopilot Update Script ===
+echo === RS-Autopilot 一键更新 ===
 echo.
 
-rem === Python detection (same as start.bat) ===
+rem === 检测 Python（与 start.bat 逻辑一致）===
 set PYTHON_EXE=
 
 where py >nul 2>&1
@@ -26,181 +26,181 @@ if !ERRORLEVEL! equ 0 (
 )
 
 if not defined PYTHON_EXE (
-    echo [!!] Python not found in PATH. Please install Python 3.11 or 3.12
-    echo [..] and tick "Add Python to PATH" during installation.
+    echo [!!] 未找到 Python，请安装 Python 3.11 或 3.12
+    echo [..] 安装时勾选 "Add Python to PATH"
     pause
     exit /b 1
 )
 
-rem Verify the resolved python actually runs a real interpreter (not the Store stub).
+rem 验证 Python 能正常运行（排除 Microsoft Store 占位符）
 %PYTHON_EXE% -c "import sys; sys.exit(0)" >nul 2>&1
 if !ERRORLEVEL! neq 0 (
-    echo [!!] Python was found but failed to run ^(maybe the Microsoft Store stub^).
-    echo [..] Disable the "python" app execution alias in
-    echo [..] Windows Settings ^> Apps ^> Advanced app settings ^> App execution aliases,
-    echo [..] then re-run update.bat, or install Python from https://www.python.org/
+    echo [!!] Python 找到了但无法运行（可能是 Microsoft Store 占位符）
+    echo [..] 请在 Windows 设置 ^> 应用 ^> 高级应用设置 ^> 应用执行别名中
+    echo [..] 关闭 python / python3 的开关，然后重新运行 update.bat
+    echo [..] 或从 https://www.python.org/ 重新安装并勾选 "Add Python to PATH"
     pause
     exit /b 1
 )
 
-rem === Step 1: Stop running services ===
-echo [..] Step 1/10 - Stopping running services...
+rem === 步骤 1/10：停止正在运行的服务 ===
+echo [..] 步骤 1/10 - 正在停止服务...
 if exist stop.bat (
     call stop.bat
     if !ERRORLEVEL! neq 0 (
-        echo [!!] stop.bat failed. Aborting update.
+        echo [!!] stop.bat 执行失败，终止更新
         pause
         exit /b 1
     )
 ) else (
-    echo [WARN] stop.bat not found, continuing without stopping services.
+    echo [WARN] 未找到 stop.bat，跳过停止服务
 )
 echo.
 
-rem === Step 2: Show current version ===
-echo [..] Step 2/10 - Current version:
+rem === 步骤 2/10：显示当前版本 ===
+echo [..] 步骤 2/10 - 当前版本：
 set CURRENT_VERSION=
 for /f "delims=" %%v in ('%PYTHON_EXE% -c "from version import __version__; print(__version__)" 2^>nul') do set CURRENT_VERSION=%%v
 if not defined CURRENT_VERSION (
-    echo [WARN] Could not read version from version.py
+    echo [WARN] 无法从 version.py 读取版本
     set CURRENT_VERSION=unknown
 )
 echo     !CURRENT_VERSION!
 echo.
 
-rem === Step 3: Check git remote ===
-echo [..] Step 3/10 - Checking git remote...
+rem === 步骤 3/10：检查 Git 远程仓库 ===
+echo [..] 步骤 3/10 - 检查 Git 远程仓库...
 where git >nul 2>&1
 if !ERRORLEVEL! neq 0 (
-    echo [!!] git not found in PATH. Please install Git from https://git-scm.com/
+    echo [!!] 未找到 git，请从 https://git-scm.com/ 安装 Git
     pause
     exit /b 1
 )
 set HAS_REMOTE=0
 for /f "delims=" %%r in ('git remote 2^>nul') do set HAS_REMOTE=1
 if "!HAS_REMOTE!"=="0" (
-    echo [!!] No git remote configured. Cannot pull updates.
-    echo [..] To configure a remote, run:
-    echo     git remote add origin https://github.com/Uiharu177/RS-Autopilot.git
-    echo [..] Then re-run update.bat
+    echo [!!] 未配置 Git 远程仓库，无法拉取更新
+    echo [..] 请运行：git remote add origin https://github.com/Uiharu177/RS-Autopilot.git
+    echo [..] 然后重新运行 update.bat
     pause
     exit /b 1
 )
-echo [OK] Git remote configured.
+echo [OK] Git 远程仓库已配置
 echo.
 
-rem === Step 4: git stash (save local changes) ===
-echo [..] Step 4/10 - Saving local changes (git stash)...
+rem === 步骤 4/10：暂存本地改动 ===
+echo [..] 步骤 4/10 - 暂存本地改动（git stash）...
 set STASHED=0
 set HAS_CHANGES=0
 for /f "delims=" %%s in ('git status --porcelain 2^>nul') do set HAS_CHANGES=1
 if "!HAS_CHANGES!"=="1" (
-    git stash push -u -m "update.bat auto-stash %date% %time%"
+    git stash push -u -m "update.bat auto-stash %date% %time%" 2>nul
     if !ERRORLEVEL! equ 0 (
-        echo [OK] Local changes stashed.
+        echo [OK] 本地改动已暂存
         set STASHED=1
     ) else (
-        echo [!!] git stash failed. Aborting.
+        echo [!!] git stash 失败，终止更新
         pause
         exit /b 1
     )
 ) else (
-    echo [..] No local changes to stash.
+    echo [..] 没有本地改动，跳过暂存
 )
 echo.
 
-rem === Step 5: git pull --rebase ===
-echo [..] Step 5/10 - Pulling latest code (git pull --rebase)...
-git pull --rebase
-if !ERRORLEVEL! neq 0 (
-    echo [!!] git pull --rebase failed.
+rem === 步骤 5/10：拉取最新代码 ===
+echo [..] 步骤 5/10 - 拉取最新代码（git pull --rebase）...
+git pull --rebase >nul 2>&1
+set PULL_RESULT=!ERRORLEVEL!
+if !PULL_RESULT! neq 0 (
+    echo [!!] git pull --rebase 失败（错误码 !PULL_RESULT!）
     if "!STASHED!"=="1" (
-        echo [..] Your local changes are saved in git stash.
-        echo [..] Run: git stash pop  (after resolving conflicts)
+        echo [..] 你的本地改动已保存在 git stash 中
+        echo [..] 解决冲突后运行：git stash pop
     )
-    echo [..] Resolve conflicts manually, then re-run update.bat.
+    echo [..] 请手动解决冲突后重新运行 update.bat
     pause
     exit /b 1
 )
-echo [OK] Code updated.
+echo [OK] 代码已更新到最新版本
 echo.
 
-rem === Step 6: git stash pop (restore local changes) ===
+rem === 步骤 6/10：恢复本地改动 ===
 if "!STASHED!"=="1" (
-    echo [..] Step 6/10 - Restoring local changes (git stash pop)...
+    echo [..] 步骤 6/10 - 恢复本地改动（git stash pop）...
     git stash pop
     if !ERRORLEVEL! neq 0 (
-        echo [WARN] git stash pop reported conflicts!
-        echo [..] Your local changes conflicted with the pulled code.
-        echo [..] Resolve the conflicts manually, then:
-        echo     git add ^<resolved-files^>
+        echo [WARN] git stash pop 出现冲突！
+        echo [..] 你的本地改动与拉取的代码存在冲突
+        echo [..] 请手动解决冲突后执行：
+        echo     git add ^<已解决的文件^>
         echo     git stash drop
         pause
         exit /b 1
     ) else (
-        echo [OK] Local changes restored.
+        echo [OK] 本地改动已恢复
     )
 ) else (
-    echo [..] Step 6/10 - No stash to restore, skipping.
+    echo [..] 步骤 6/10 - 没需要恢复的改动，跳过
 )
 echo.
 
-rem === Step 7: pip install -r requirements.txt ===
-echo [..] Step 7/10 - Updating Python dependencies...
+rem === 步骤 7/10：更新 Python 依赖 ===
+echo [..] 步骤 7/10 - 更新 Python 依赖...
 %PYTHON_EXE% -m pip install -r requirements.txt
 if !ERRORLEVEL! neq 0 (
-    echo [!!] pip install failed. Check the error above.
+    echo [!!] pip install 失败，请查看上方错误信息
     pause
     exit /b 1
 )
-echo [OK] Python dependencies updated.
+echo [OK] Python 依赖已更新
 echo.
 
-rem === Step 8: cd web && npm install && npm run build && cd .. ===
-echo [..] Step 8/10 - Building frontend...
+rem === 步骤 8/10：构建前端 ===
+echo [..] 步骤 8/10 - 构建前端...
 if exist web\package.json (
     pushd web
     call npm install
     if !ERRORLEVEL! neq 0 (
         popd
-        echo [!!] npm install failed.
+        echo [!!] npm install 失败
         pause
         exit /b 1
     )
-    echo [..] Building frontend...
+    echo [..] 正在构建前端...
     call npm run build
     if !ERRORLEVEL! neq 0 (
         popd
-        echo [!!] npm run build failed.
+        echo [!!] npm run build 失败
         pause
         exit /b 1
     )
     popd
-    echo [OK] Frontend updated and built.
+    echo [OK] 前端已构建完成
 ) else (
-    echo [..] web\package.json not found, skipping frontend.
+    echo [..] 未找到 web\package.json，跳过前端构建
 )
 echo.
 
-rem === Step 9: Show new version ===
-echo [..] Step 9/10 - New version:
+rem === 步骤 9/10：显示新版本 ===
+echo [..] 步骤 9/10 - 更新后版本：
 set NEW_VERSION=
 for /f "delims=" %%v in ('%PYTHON_EXE% -c "from version import __version__; print(__version__)" 2^>nul') do set NEW_VERSION=%%v
 if not defined NEW_VERSION set NEW_VERSION=unknown
 echo     !NEW_VERSION!
 if "!NEW_VERSION!"=="unknown" (
-    echo [WARN] Could not read new version from version.py
+    echo [WARN] 无法从 version.py 读取新版本
 ) else if "!CURRENT_VERSION!"=="!NEW_VERSION!" (
-    echo [..] Version unchanged (!CURRENT_VERSION!).
+    echo [..] 版本未变化（!CURRENT_VERSION!）
 ) else (
-    echo [OK] Updated: !CURRENT_VERSION! -^> !NEW_VERSION!
+    echo [OK] 已更新：!CURRENT_VERSION! -^> !NEW_VERSION!
 )
 echo.
 
-rem === Step 10: Prompt to run start.bat ===
+rem === 步骤 10/10：提示启动 ===
 echo ========================================
-echo   Update complete!
-echo   Run start.bat to start the service.
+echo   更新完成！
+echo   请运行 start.bat 启动服务
 echo ========================================
 echo.
 pause
