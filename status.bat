@@ -1,19 +1,19 @@
 @echo off
 chcp 65001 >nul
 cd /d "%~dp0"
-echo === RS-Autopilot Service Status ===
+echo === RS-Autopilot 服务状态 ===
 
 netstat -ano 2>nul | findstr /C:"LISTENING" | findstr /C:":15177 " >nul
 if %ERRORLEVEL%==0 (
-    echo   Backend:  RUNNING  http://localhost:15177
+    echo   后端：运行中  http://localhost:15177
 ) else (
-    echo   Backend:  STOPPED
+    echo   后端：已停止
 )
 
-echo   Frontend: served by Backend ^(open http://localhost:15177^)
+echo   前端：由后端提供 ^(打开 http://localhost:15177^)
 
 if exist logs\runtime.log (
-    for %%s in (logs\runtime.log) do echo   Log file: %%~zs bytes
+    for %%s in (logs\runtime.log) do echo   日志文件：%%~zs 字节
 ) else (
-    echo   Log file: none
+    echo   日志文件：无
 )

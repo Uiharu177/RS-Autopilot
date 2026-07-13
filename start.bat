@@ -5,9 +5,9 @@ title RS-Autopilot
 
 cd /d "%~dp0"
 
-rem === Find Python ===
-rem Prefer the official "py" launcher, then python, then python3.
-rem Also reject the Microsoft Store stub which launches the Store instead of running.
+rem === 检测 Python ===
+rem 优先使用官方 "py" 启动器，然后 python，再 python3。
+rem 同时排除 Microsoft Store 占位符（它会打开商店而不是运行）。
 set PYTHON_EXE=
 
 where py >nul 2>&1
@@ -26,44 +26,44 @@ if !ERRORLEVEL! equ 0 (
 )
 
 if not defined PYTHON_EXE (
-    echo [!!] Python not found in PATH. Please install Python 3.11 or 3.12
-    echo [..] and tick "Add Python to PATH" during installation.
-    echo [..] If you already installed it, also disable the "python" app execution
-    echo [..] alias in Windows Settings ^> Apps ^> Advanced app settings ^> App execution aliases.
+    echo [!!] 未找到 Python，请安装 Python 3.11 或 3.12
+    echo [..] 安装时勾选 "Add Python to PATH"
+    echo [..] 如果已安装，请在 Windows 设置 ^> 应用 ^> 高级应用设置 ^> 应用执行别名中
+    echo [..] 关闭 python / python3 的开关
     pause
     exit /b 1
 )
 
-rem Verify the resolved python actually runs a real interpreter (not the Store stub).
+rem 验证 Python 能正常运行（排除 Microsoft Store 占位符）
 %PYTHON_EXE% -c "import sys; sys.exit(0)" >nul 2>&1
 if !ERRORLEVEL! neq 0 (
-    echo [!!] Python was found but failed to run ^(maybe the Microsoft Store stub^).
-    echo [..] Disable the "python" app execution alias in
-    echo [..] Windows Settings ^> Apps ^> Advanced app settings ^> App execution aliases,
-    echo [..] then re-run start.bat, or install Python from https://www.python.org/
+    echo [!!] Python 找到了但无法运行（可能是 Microsoft Store 占位符）
+    echo [..] 请在 Windows 设置 ^> 应用 ^> 高级应用设置 ^> 应用执行别名中
+    echo [..] 关闭 python / python3 的开关，然后重新运行 start.bat
+    echo [..] 或从 https://www.python.org/ 重新安装并勾选 "Add Python to PATH"
     pause
     exit /b 1
 )
 
 if not exist logs mkdir logs
 
-echo [..] Stopping stale servers...
-rem Kill our own backend/frontend processes by specific window title + executable name
+echo [..] 正在停止残留进程...
+rem 按窗口标题 + 可执行文件名杀掉自己的前后端进程
 taskkill /F /IM python.exe   /FI "WINDOWTITLE eq RS-Autopilot-Backend" >nul 2>&1
 taskkill /F /IM python3.exe  /FI "WINDOWTITLE eq RS-Autopilot-Backend" >nul 2>&1
 taskkill /F /IM py.exe       /FI "WINDOWTITLE eq RS-Autopilot-Backend" >nul 2>&1
 taskkill /F /IM node.exe     /FI "WINDOWTITLE eq RS-Autopilot-Frontend" >nul 2>&1
-rem Cleanup port bindings -- only kill if the process is Python/Node
-for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr /C:":15177 " ^| findstr "LISTENING"') do call :kill_port %%a 15177 python backend
+rem 清理端口占用 -- 仅当占用进程是 Python/Node 时才杀
+for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr /C:":15177 " ^| findstr "LISTENING"') do call :kill_port %%a 15177 python 后端
 goto :after_kill_port
 
 :kill_port
 tasklist /FI "PID eq %1" /FO CSV /NH 2>nul | findstr /I "%3" >nul
 if errorlevel 1 (
-    echo [WARN] Port %2 occupied by non-%3 process ^(PID %1^), skipping
+    echo [WARN] 端口 %2 被非 %3 进程占用 ^(PID %1^)，跳过
 ) else (
     taskkill /F /PID %1 >nul 2>&1
-    echo [..] Stopped stale %4 on port %2 ^(PID %1^)
+    echo [..] 已停止占用端口 %2 的 %4 ^(PID %1^)
 )
 exit /b
 
@@ -71,28 +71,42 @@ exit /b
 ping -n 3 127.0.0.1 >nul
 
 if exist web\node_modules\.vite (
-    echo [..] Clearing Vite cache...
+    echo [..] 清理 Vite 缓存...
     rmdir /s /q web\node_modules\.vite
 )
 
 if exist web\package.json (
-    echo [..] Installing frontend dependencies...
-    pushd web
-    call npm install
-    popd
-
-    echo [..] Building frontend...
-    pushd web
-    call npm run build
-    popd
+    if not exist web\dist\index.html (
+        echo [..] 首次启动，正在安装前端依赖...
+        pushd web
+        call npm install
+        if !ERRORLEVEL! neq 0 (
+            popd
+            echo [!!] npm install 失败
+            pause
+            exit /b 1
+        )
+        echo [..] 正在构建前端...
+        call npm run build
+        if !ERRORLEVEL! neq 0 (
+            popd
+            echo [!!] npm run build 失败
+            pause
+            exit /b 1
+        )
+        popd
+        echo [OK] 前端已构建完成
+    ) else (
+        echo [..] 前端已构建，跳过
+    )
 )
 
-echo [..] Starting backend...
-rem Truncate the old log so the readiness check only sees this run's output.
+echo [..] 正在启动后端...
+rem 清空旧日志，就绪检查只看本次启动的输出
 if exist logs\backend.log type nul > logs\backend.log
 start "RS-Autopilot-Backend" /B %PYTHON_EXE% cli.py serve > logs\backend.log 2>&1
 
-echo [..] Waiting for backend to be ready ^(up to 30s^)...
+echo [..] 等待后端就绪（最多 30 秒）...
 set READY=0
 for /l %%i in (1,1,60) do (
     netstat -ano 2>nul | findstr /C:":15177 " | findstr "LISTENING" >nul
@@ -106,32 +120,32 @@ for /l %%i in (1,1,60) do (
 :ready
 if "!READY!"=="0" (
     echo.
-    echo [!!] Backend failed to start within 30s.
-    echo [..] Port 15177 is not listening. Common causes:
-    echo [..]   1. Missing Python dependencies - run: pip install -r requirements.txt
-    echo [..]   2. Port 15177 occupied by another program
-    echo [..]   3. Python is the Microsoft Store stub ^(disable app execution alias^)
+    echo [!!] 后端在 30 秒内未能启动
+    echo [..] 端口 15177 未监听。常见原因：
+    echo [..]   1. 缺少 Python 依赖 - 运行：pip install -r requirements.txt
+    echo [..]   2. 端口 15177 被其他程序占用
+    echo [..]   3. Python 是 Microsoft Store 占位符（关闭应用执行别名）
     echo.
-    echo [..] Last lines of logs\backend.log:
+    echo [..] logs\backend.log 最后 20 行：
     echo ----------------------------------------
     powershell -NoProfile -Command "Get-Content logs\backend.log -Tail 20 -Encoding utf8 2>$null"
     echo ----------------------------------------
     echo.
-    echo [..] Full log: logs\backend.log
+    echo [..] 完整日志：logs\backend.log
     pause
     exit /b 1
 )
 
-echo [OK] Backend is running at http://localhost:15177
+echo [OK] 后端已启动：http://localhost:15177
 echo.
-echo   RS-Autopilot is running
-echo   Open:  http://localhost:15177
+echo   RS-Autopilot 正在运行
+echo   打开：http://localhost:15177
 echo.
-echo   stop.bat   - Stop backend and frontend
-echo   status.bat - Show status
+echo   stop.bat   - 停止后端
+echo   status.bat - 查看状态
 echo.
 
-echo [..] Opening browser...
+echo [..] 正在打开浏览器...
 start "" http://127.0.0.1:15177/#/
 
 endlocal
