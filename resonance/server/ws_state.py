@@ -16,10 +16,16 @@ ws_lock = Lock()
 def ws_push(item):
     data = item.serialize()
     sub_type = item.type
+    dead = []
     with ws_lock:
-        for ws in list(ws_connections):
+        for ws in ws_connections:
             if ws.push_config.get(sub_type):
-                ws.send(data)
+                try:
+                    ws.send(data)
+                except Exception:
+                    dead.append(ws)
+        for ws in dead:
+            ws_connections.remove(ws)
 
 
 ws_queue = QueueProxy("WebSocket推送", ws_push)

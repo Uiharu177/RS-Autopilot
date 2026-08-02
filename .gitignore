@@ -22,6 +22,9 @@ venv/
 # Temp
 temp/
 
+# AI agent workspace
+.omo/
+
 # OS files
 .DS_Store
 Thumbs.db

@@ -156,8 +156,34 @@ def _tap_text(results: list, keywords: tuple[str, ...], log_text: str) -> bool:
 
 
 def handle_startup_interruption(recog: Recognizer) -> bool:
-    """Handle login/update/news overlays before generic unknown-page recovery."""
+    """Handle login/update/news/battle overlays before generic recovery."""
     results = recog.ocr()
+
+    # A restart can leave the game on the escort encounter page.  It is not a
+    # crash screen: tap the encounter entry so the normal battle/travel flow
+    # can continue instead of treating the page as UNKNOWN.
+    for item in results:
+        if "护卫队迎击" in item["text"]:
+            input_tap(_ocr_center(item))
+            logger.info("恢复流程：重启后点击护卫队迎击")
+            return True
+
+    # This dialog is commonly OCR'd as one exact line, but it may also be
+    # split into several text boxes. Never wait on it as UNKNOWN: click the
+    # reconnect/retry action first and let the caller re-detect the scene.
+    network_text = "".join(item["text"].replace(" ", "") for item in results)
+    network_markers = ("当前网络不佳，请尝试重新连接", "当前网络不佳", "尝试重新连接")
+    if any(marker in network_text for marker in network_markers):
+        for item in results:
+            if any(keyword in item["text"] for keyword in ("重新连接", "重试", "确定", "确认")):
+                input_tap(_ocr_center(item))
+                logger.info("恢复流程：网络不佳，点击重新连接")
+                return True
+        # OCR can miss the button while still recognizing the dialog text.
+        input_tap((640, 505))
+        logger.info("恢复流程：网络不佳，点击默认重新连接位置")
+        return True
+
     has_update = any(
         "需要下载资源" in item["text"]
         or "资源包" in item["text"]
@@ -327,6 +353,14 @@ def recover_to_expected(context: RecoveryContext) -> RecoveryResult:
             continue
 
         if state.scene in (Scene.TRAVEL_CRUISE, Scene.TRAVEL_MAP, Scene.BATTLE_CARD):
+            if state.scene == Scene.BATTLE_CARD:
+                # Battle encounter pages can appear immediately after restart;
+                # give the page-specific startup handler another opportunity.
+                if _is_startup_context(context):
+                    if handle_startup_interruption(Recognizer()):
+                        actions.append("click_battle_encounter")
+                        time.sleep(1.5)
+                        continue
             if not context.allow_travel:
                 snapshot = capture_debug_snapshot(reason=f"{context.step}:unexpected_travel")
                 return RecoveryResult(
