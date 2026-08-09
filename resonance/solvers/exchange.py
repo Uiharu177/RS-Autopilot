@@ -39,6 +39,7 @@ from resonance.utils.utils import RESOURCES_PATH
 
 
 OUTLET_TAP_CACHE: dict[Tuple[str, str], Tuple[int, int]] = {}
+EXCHANGE_OCR_KEYWORD = "交易所"
 
 
 def _current_exchange_texts() -> List[str]:
@@ -145,7 +146,6 @@ def _wait_exchange_ocr_click(
     initial_results: Optional[List[dict]] = None,
     cache_key: Optional[Tuple[str, str]] = None,
 ) -> bool:
-    aliases = ("交易所", "平交易所", "巫交易所", "亚交易所", "交易所-武林市集")
     start = time.perf_counter()
     pending_results = initial_results
     while time.perf_counter() - start < timeout:
@@ -157,21 +157,18 @@ def _wait_exchange_ocr_click(
         pending_results = None
         for item in results:
             text = item["text"]
-            alias = next((alias for alias in aliases if alias in text), None)
-            if not alias:
+            if EXCHANGE_OCR_KEYWORD not in text:
                 continue
             position = item["position"]
             x1 = position[0][0]
             x2 = position[2][0]
-            if len(text) > len(alias) and alias in text:
-                alias_start = text.index(alias)
-                alias_center = alias_start + len(alias) / 2
-                center_x = int(x1 + (x2 - x1) * alias_center / max(len(text), 1))
-            else:
-                center_x = int((x1 + x2) / 2)
+            # The outlet icon is below the whole OCR label.  Match by the
+            # common keyword, but tap below the complete label's centre so a
+            # long real name such as "交易所-武林市集" remains correctly aligned.
+            center_x = int((x1 + x2) / 2)
             center_y = int((position[0][1] + position[2][1]) / 2)
             pos = (center_x, center_y + 35)
-            logger.info(f"交易所OCR稳定命中: {text}")
+            logger.info(f"交易所OCR稳定命中: 交易所 (原始识别={text})")
             get_device().input_tap(pos[0], pos[1])
             if _wait_exchange_open():
                 if cache_key is not None:
@@ -250,8 +247,6 @@ def find_outlet(name: str) -> bool:
         )
 
     outlet_names = [name]
-    if name == "交易所":
-        outlet_names.extend(["平交易所", "亚交易所", "交易所-武林市集"])
 
     def _try_ocr_click(log: bool = False):
         for outlet_name in outlet_names:

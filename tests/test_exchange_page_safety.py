@@ -17,6 +17,10 @@ class ExchangePageSafetyTests(unittest.TestCase):
         self.assertTrue(exchange._is_exchange_entry(texts))
         self.assertFalse(exchange._is_exchange_tab("sell", texts))
 
+    def test_exchange_outlet_matching_uses_the_common_keyword(self):
+        self.assertIn(exchange.EXCHANGE_OCR_KEYWORD, "巫交易所")
+        self.assertIn(exchange.EXCHANGE_OCR_KEYWORD, "交易所-武林市集")
+
     def test_entry_page_opens_sell_with_its_own_button(self):
         with patch(
             "resonance.solvers.exchange._current_exchange_texts",

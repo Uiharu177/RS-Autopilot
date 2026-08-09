@@ -119,6 +119,10 @@ def buy_business(
             return False
         time.sleep(0.5)
         new_boatload = get_boatload()
+        if new_boatload == 0:
+            logger.info("已满载，停止遍历剩余商品")
+            full_boatload = True
+            return True
         if new_boatload == prev:
             logger.info(f"载货量暂未变化 ({prev}% -> {new_boatload}%)，仅复查，不重复点击同一商品")
             time.sleep(0.5)
@@ -130,14 +134,17 @@ def buy_business(
         return True
 
     for good in primary_goods:
-        if process_goods(good):
-            pass
-    for good in secondary_goods:
-        if process_goods(good):
-            pass
+        process_goods(good)
+        if full_boatload or invalid_page:
+            break
+    if not full_boatload and not invalid_page:
+        for good in secondary_goods:
+            process_goods(good)
+            if full_boatload or invalid_page:
+                break
     if invalid_page:
         return False
-    if not is_empty_goods():
+    if not is_purchase_selection_empty():
         click_bargain_button(num)
         click_buy_button()
         time.sleep(0.5)
@@ -151,11 +158,16 @@ def buy_business(
         return True
 
 
-def is_empty_goods():
+def is_purchase_selection_empty():
+    """Return whether the buy-page selection list is empty.
+
+    This is not a cargo-hold check: it verifies that this purchase has at
+    least one selected item before bargaining and pressing the buy button.
+    """
     image = screenshot()
     image.crop_image((870, 132), (994, 205))
     bgr = image.get_bgr((898, 169))
-    logger.debug(f"货物是否为空检查 {bgr}")
+    logger.debug(f"购买清单是否为空检查 {bgr}")
     return bgr.r < 40 and bgr.g < 40 and bgr.b < 40
 
 

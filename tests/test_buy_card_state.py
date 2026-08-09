@@ -99,11 +99,29 @@ class BuyCardStateTests(unittest.TestCase):
             "resonance.solvers.buy._ocr_goods_list", return_value=data
         ), patch("resonance.solvers.buy.click") as click, patch(
             "resonance.solvers.buy.time.sleep"
-        ), patch("resonance.solvers.buy.is_empty_goods", return_value=True):
+        ), patch("resonance.solvers.buy.is_purchase_selection_empty", return_value=True):
             self.assertTrue(buy.buy_business(["黑毛牛排"], []))
 
         self.assertEqual(click.call_count, 2)
         click.assert_called_with((798, 286))
+
+    def test_full_boatload_stops_scanning_remaining_goods(self):
+        data = [
+            ocr_item("黑毛牛排", 798, 286),
+            ocr_item("100%", 770, 325),
+        ]
+
+        with patch(
+            "resonance.solvers.buy.get_boatload", side_effect=[100, 100, 90, 90, 0]
+        ), patch(
+            "resonance.solvers.buy.buy_good", return_value=(True, 0)
+        ) as buy_good, patch("resonance.solvers.buy.time.sleep"), patch(
+            "resonance.solvers.buy.is_purchase_selection_empty", return_value=True
+        ):
+            self.assertTrue(buy.buy_business(["黑毛牛排", "行李箱包"], ["大龙虾"]))
+        self.assertEqual(buy_good.call_count, 2)  # probe + the first real purchase
+        self.assertEqual(buy_good.call_args_list[0].args[0], "黑毛牛排")
+        self.assertEqual(buy_good.call_args_list[1].args[0], "黑毛牛排")
 
 
 if __name__ == "__main__":
