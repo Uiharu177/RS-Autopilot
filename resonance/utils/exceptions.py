@@ -22,3 +22,7 @@ class AppTypeError(AppException):
 class StopExecution(Exception):
     def __init__(self):
         super().__init__("停止执行程序")
+
+
+class TaskExecutionFailed(Exception):
+    """A task reached a terminal business failure and must not be completed."""

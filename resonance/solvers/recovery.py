@@ -30,11 +30,13 @@ from loguru import logger
 
 from resonance.debug.snapshot import capture_debug_snapshot
 from resonance.device.adb import ADB
+from resonance.device import device as device_state
 from resonance.device.device import get_device, input_back, input_tap, restart_game, screenshot
 from resonance.model import app
 from resonance.scene.recognizer import Recognizer
 from resonance.scene.scene import Scene
 from resonance.scene.waiting import WAITING_SCENES, waiting_solver
+from resonance.utils.exceptions import StopExecution
 from resonance.utils.utils import RESOURCES_PATH
 from resonance.vision.ocr import predict
 
@@ -53,6 +55,7 @@ class RecoveryContext:
     target_city: Optional[str] = None
     allow_travel: bool = False
     max_attempts: int = 12
+    startup_wait_timeout: float = 60.0
 
 
 @dataclass
@@ -87,10 +90,19 @@ def _raw_adb_tap(pos: tuple[int, int]) -> bool:
         adb.kill()
 
 
+def _interruptible_sleep(seconds: float) -> None:
+    """Sleep in short slices so a manual stop never waits for a timeout."""
+    deadline = time.perf_counter() + max(0.0, seconds)
+    while time.perf_counter() < deadline:
+        if device_state.STOP:
+            raise StopExecution()
+        time.sleep(min(0.5, deadline - time.perf_counter()))
+
+
 def _wait_scene_leave(scene: Scene, timeout: float = 8.0) -> bool:
     start = time.perf_counter()
     while time.perf_counter() - start < timeout:
-        time.sleep(1.0)
+        _interruptible_sleep(1.0)
         current = Recognizer().scene
         if current != scene:
             logger.info(f"恢复流程：场景已离开 {scene.name} -> {current.name}")
@@ -99,11 +111,11 @@ def _wait_scene_leave(scene: Scene, timeout: float = 8.0) -> bool:
     return False
 
 
-def _short_wait_scene_change(current: Scene, timeout: float = 6.0, interval: float = 1.0) -> bool:
+def _short_wait_scene_change(current: Scene, timeout: float = 60.0, interval: float = 1.0) -> bool:
     logger.info(f"恢复流程：短等场景 {current.name} 恢复 (超时={timeout}s)")
     start = time.perf_counter()
     while time.perf_counter() - start < timeout:
-        time.sleep(interval)
+        _interruptible_sleep(interval)
         new_scene = Recognizer().scene
         if new_scene != current and new_scene not in (Scene.TRANSIT, Scene.LOADING, Scene.CONNECTING):
             logger.info(f"恢复流程：短等恢复完成 {current.name} -> {new_scene.name}")
@@ -312,11 +324,17 @@ def inspect_current_state() -> CurrentState:
 
 def recover_to_expected(context: RecoveryContext) -> RecoveryResult:
     actions: list[str] = []
+    startup_deadline = (
+        time.perf_counter() + context.startup_wait_timeout
+        if _is_startup_context(context) else None
+    )
     for attempt in range(1, context.max_attempts + 1):
+        if device_state.STOP:
+            raise StopExecution()
         recog = Recognizer()
         if handle_startup_interruption(recog):
             actions.append("handle_startup_interruption")
-            time.sleep(1.5)
+            _interruptible_sleep(1.5)
             continue
 
         state = inspect_current_state()
@@ -331,7 +349,7 @@ def recover_to_expected(context: RecoveryContext) -> RecoveryResult:
             snapshot = capture_debug_snapshot(reason=f"{context.step}:crash")
             actions.append("restart_game")
             restart_game()
-            time.sleep(5.0)
+            _interruptible_sleep(5.0)
             continue
 
         if state.scene == Scene.LOGIN:
@@ -339,17 +357,25 @@ def recover_to_expected(context: RecoveryContext) -> RecoveryResult:
             _confirm_update_if_needed(recog)
             _tap_login(recog)
             actions.append("tap_login")
-            _wait_scene_leave(Scene.LOGIN, timeout=10.0)
+            login_timeout = 45.0 if _is_startup_context(context) else 10.0
+            _wait_scene_leave(Scene.LOGIN, timeout=login_timeout)
             continue
 
         if state.scene in (Scene.LOADING, Scene.TRANSIT, Scene.CONNECTING) or state.scene in WAITING_SCENES:
             if _is_startup_context(context):
                 actions.append("short_wait_scene_change")
-                _short_wait_scene_change(state.scene)
+                remaining = (startup_deadline - time.perf_counter()) if startup_deadline else 0.0
+                if remaining <= 0:
+                    snapshot = capture_debug_snapshot(reason=f"{context.step}:startup_wait_timeout")
+                    return RecoveryResult(
+                        ok=False, state=state, reason="startup readiness timeout",
+                        attempts=attempt, snapshot=snapshot.get("screenshot"), actions=actions,
+                    )
+                _short_wait_scene_change(state.scene, timeout=min(remaining, 60.0))
             else:
                 actions.append("waiting_solver")
                 waiting_solver(Recognizer())
-            time.sleep(1.0)
+            _interruptible_sleep(1.0)
             continue
 
         if state.scene in (Scene.TRAVEL_CRUISE, Scene.TRAVEL_MAP, Scene.BATTLE_CARD):
@@ -359,7 +385,7 @@ def recover_to_expected(context: RecoveryContext) -> RecoveryResult:
                 if _is_startup_context(context):
                     if handle_startup_interruption(Recognizer()):
                         actions.append("click_battle_encounter")
-                        time.sleep(1.5)
+                        _interruptible_sleep(1.5)
                         continue
             if not context.allow_travel:
                 snapshot = capture_debug_snapshot(reason=f"{context.step}:unexpected_travel")
@@ -378,13 +404,13 @@ def recover_to_expected(context: RecoveryContext) -> RecoveryResult:
                 capture_debug_snapshot(reason=f"{context.step}:travel_monitor_failed")
                 restart_game()
                 actions.append("restart_game")
-                time.sleep(5.0)
+                _interruptible_sleep(5.0)
             continue
 
         if state.scene == Scene.TASK_DETAIL:
             actions.append("close_task_detail")
             input_back()
-            time.sleep(1.0)
+            _interruptible_sleep(1.0)
             continue
 
         if state.scene == Scene.STATION_LIST:
@@ -394,7 +420,7 @@ def recover_to_expected(context: RecoveryContext) -> RecoveryResult:
                 if not safe_go_home():
                     input_back()
                     actions.append("input_back")
-            time.sleep(1.0)
+            _interruptible_sleep(1.0)
             continue
 
         if state.scene in (
@@ -409,16 +435,16 @@ def recover_to_expected(context: RecoveryContext) -> RecoveryResult:
             if not safe_go_home():
                 input_back()
                 actions.append("input_back")
-            time.sleep(1.0)
+            _interruptible_sleep(1.0)
             continue
 
         actions.append("escape_unknown")
         if attempt % 4 == 0:
             capture_debug_snapshot(reason=f"{context.step}:unknown_scene")
         input_back()
-        time.sleep(0.8)
+        _interruptible_sleep(0.8)
         input_tap((83, 36))
-        time.sleep(0.8)
+        _interruptible_sleep(0.8)
 
     snapshot = capture_debug_snapshot(reason=f"{context.step}:recovery_failed")
     return RecoveryResult(

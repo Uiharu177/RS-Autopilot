@@ -125,6 +125,14 @@
                     <n-button block secondary type="error" @click="stopRun" :disabled="!running && !pageFlowLoading">停止</n-button>
                   </n-gi>
                 </n-grid>
+                <n-grid :cols="2" :x-gap="12">
+                  <n-gi>
+                    <n-button block tertiary @click="showRunDiagnostic">本次运行诊断</n-button>
+                  </n-gi>
+                  <n-gi>
+                    <n-button block tertiary @click="exportRunDiagnostic">导出诊断包</n-button>
+                  </n-gi>
+                </n-grid>
               </n-space>
             </template>
           </n-card>
@@ -141,7 +149,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, reactive, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, reactive, watch, h } from 'vue'
 import { useMessage, useDialog } from 'naive-ui'
 import { onBeforeRouteLeave } from 'vue-router'
 import {
@@ -383,6 +391,52 @@ async function startPageFlow() {
     message.error(getErrorMessage(e, '请求测试流程失败'))
   } finally {
     pageFlowLoading.value = false
+  }
+}
+
+function formatDuration(ms?: number | null) {
+  if (ms === null || ms === undefined) return '进行中'
+  if (ms < 1000) return `${Math.round(ms)} ms`
+  return `${(ms / 1000).toFixed(1)} 秒`
+}
+
+async function showRunDiagnostic() {
+  try {
+    const res = await api.debug.latestRunDiagnostic()
+    const report = res.data?.diagnostic
+    if (!report) {
+      message.info('还没有可查看的跑商诊断记录')
+      return
+    }
+    const route = Array.isArray(report.route) ? report.route.join(' → ') : '-'
+    const events = (report.events || []).slice(-8).map((item: any) =>
+      `${item.at?.slice(11, 19) || '--:--:--'}  ${item.message}`
+    ).join('\n') || '暂无步骤记录'
+    dialog.info({
+      title: '本次运行诊断',
+      positiveText: '知道了',
+      content: () => h('div', { style: 'white-space: pre-wrap; line-height: 1.7; font-size: 13px' },
+        `状态：${report.status}\n路线：${route}\n当前步骤：${report.current_step || '-'}\n运行时长：${formatDuration(report.duration_ms)}\n\n最近记录：\n${events}`
+      ),
+    })
+  } catch (e) {
+    message.error(getErrorMessage(e, '读取运行诊断失败'))
+  }
+}
+
+async function exportRunDiagnostic() {
+  try {
+    const res = await api.debug.exportLatestRunDiagnostic()
+    const blob = new Blob([res.data], { type: 'application/zip' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'trade-run-diagnostic.zip'
+    link.click()
+    URL.revokeObjectURL(url)
+    message.success('诊断包已导出')
+  } catch (e) {
+    message.error(getErrorMessage(e, '导出诊断包失败'))
   }
 }
 

@@ -33,9 +33,36 @@ _device: IADB = ADB()
 _is_connected = False
 
 
+def _sleep_or_stop(seconds: float) -> None:
+    """Wait in short slices so a manual stop interrupts startup promptly."""
+    deadline = time.perf_counter() + max(0.0, seconds)
+    while time.perf_counter() < deadline:
+        if STOP:
+            raise StopExecution()
+        time.sleep(min(0.5, deadline - time.perf_counter()))
+
+
 def get_device() -> IADB:
     global _device
     return _device
+
+
+def is_connected() -> bool:
+    """Return the connection state instead of inferring it from a device object."""
+    return _is_connected
+
+
+def disconnect() -> bool:
+    """Close the active transport without stopping the game process."""
+    global _device, _is_connected, STOP
+    STOP = True
+    try:
+        _device.kill()
+    except Exception as e:
+        logger.warning(f"断开设备连接时关闭传输失败: {e}")
+    _device = ADB()
+    _is_connected = False
+    return True
 
 
 def launch_emulator(port: int = 0) -> bool:
@@ -72,7 +99,7 @@ def launch_emulator(port: int = 0) -> bool:
         subprocess.run([manager, "control", "--vmindex", str(index), "launch"],
                       capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW)
         for i in range(60):
-            time.sleep(2)
+            _sleep_or_stop(2)
             r = subprocess.run([manager, "info", "-v", "all"], capture_output=True,
                               creationflags=subprocess.CREATE_NO_WINDOW)
             if r.returncode == 0 and r.stdout:
@@ -86,6 +113,8 @@ def launch_emulator(port: int = 0) -> bool:
                     return True
         logger.error(f"模拟器实例 {index} 启动超时")
         return False
+    except StopExecution:
+        raise
     except Exception as e:
         logger.exception(f"启动模拟器失败: {e}")
         return False
@@ -299,8 +328,10 @@ def stop_game() -> Dict:
     try:
         logger.info(f"正在关闭游戏 {PACKAGE_NAME}...")
         adb.device.shell(f"am force-stop {PACKAGE_NAME}")
-        time.sleep(2)
+        _sleep_or_stop(2)
         return {"success": True, "action": "stop", "package": PACKAGE_NAME}
+    except StopExecution:
+        raise
     except Exception as e:
         logger.exception("关闭游戏失败")
         return {"success": False, "action": "stop", "error": str(e)}
@@ -317,7 +348,7 @@ def start_game() -> Dict:
         logger.info(f"正在启动游戏 {PACKAGE_NAME}...")
         output = adb.device.shell(f"monkey -p {PACKAGE_NAME} -c android.intent.category.LAUNCHER 1")
         logger.info(f"启动游戏输出: {str(output).strip()}")
-        time.sleep(3)
+        _sleep_or_stop(3)
         focus = _get_focus_from_connected_adb(adb)
         if focus and PACKAGE_NAME in focus:
             logger.info("游戏启动成功，已在前台")
@@ -331,6 +362,8 @@ def start_game() -> Dict:
             "output": output,
             "error": f"游戏启动后未进入前台: {focus or 'unknown'}",
         }
+    except StopExecution:
+        raise
     except Exception as e:
         logger.exception("启动游戏失败")
         return {"success": False, "action": "start", "error": str(e)}

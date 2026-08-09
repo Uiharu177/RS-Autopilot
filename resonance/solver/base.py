@@ -21,7 +21,7 @@ from resonance.device.device import get_device, input_tap, input_swipe, restart_
 from resonance.scene.recognizer import Recognizer
 from resonance.scene.scene import Scene
 from resonance.scene.waiting import WAITING_SCENES, waiting_solver
-from resonance.utils.exceptions import StopExecution
+from resonance.utils.exceptions import StopExecution, TaskExecutionFailed
 
 
 # Decorator to register scene transition handlers
@@ -118,6 +118,8 @@ class BaseSolver:
                 self._exception_budget = 10
 
             except StopExecution:
+                raise
+            except TaskExecutionFailed:
                 raise
             except Exception as e:
                 self._exception_budget -= 1

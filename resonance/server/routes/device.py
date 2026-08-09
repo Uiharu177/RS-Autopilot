@@ -1,6 +1,15 @@
 from flask import Blueprint, jsonify, request
 
-from resonance.device.device import benchmark_screenshot_methods, connect, get_device, restart_game, start_game, stop_game
+from resonance.device.device import (
+    benchmark_screenshot_methods,
+    connect,
+    disconnect,
+    get_device,
+    is_connected,
+    restart_game,
+    start_game,
+    stop_game,
+)
 from resonance.device.adb import ADB
 from resonance.device.nemu import NEMU
 from resonance.model.runtime import app
@@ -40,8 +49,14 @@ def connect_device():
 @device_bp.route("/status", methods=["GET"])
 def device_status():
     dev = get_device()
+    connected = is_connected()
     actual_method = "nemu" if isinstance(dev, NEMU) else "adb" if isinstance(dev, ADB) else None
-    return jsonify({"connected": dev is not None, "actual_method": actual_method})
+    return jsonify({"connected": connected, "actual_method": actual_method if connected else None})
+
+
+@device_bp.route("/disconnect", methods=["POST"])
+def disconnect_device():
+    return jsonify({"success": disconnect(), "connected": False})
 
 
 @device_bp.route("/restart-game", methods=["POST"])

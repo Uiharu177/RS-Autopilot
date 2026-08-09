@@ -22,6 +22,7 @@ const api = {
   device: {
     scan: () => axios.get(`${API_BASE}/device/scan`),
     connect: (port: number) => axios.post(`${API_BASE}/device/connect`, { port }),
+    disconnect: () => axios.post(`${API_BASE}/device/disconnect`),
     status: () => axios.get(`${API_BASE}/device/status`),
     restartGame: () => axios.post(`${API_BASE}/device/restart-game`),
     startGame: () => axios.post(`${API_BASE}/device/start-game`),
@@ -64,6 +65,8 @@ const api = {
     screenshotUrl: (filename: string) =>
       `${API_BASE}/debug/screenshot/${encodeURIComponent(filename)}`,
     getFile: (filename: string) => axios.get(`${API_BASE}/debug/files/${filename}`, { responseType: 'blob' }),
+    latestRunDiagnostic: () => axios.get(`${API_BASE}/debug/run-diagnostic/latest`),
+    exportLatestRunDiagnostic: () => axios.post(`${API_BASE}/debug/run-diagnostic/latest/export`, {}, { responseType: 'blob' }),
     tradePageFlow: (buyCity?: string, sellCity?: string, rounds = 1) =>
       axios.post(`${API_BASE}/debug/trade-page-flow`, { buy_city: buyCity, sell_city: sellCity, rounds }),
     tradePageFlowCities: (cities: string[], rounds = 1) =>

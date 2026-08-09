@@ -104,6 +104,8 @@ const businessConfig = ref({ buyCity: '', sellCity: '', buyCount: 0, loopCities:
 let ws: WebSocket | null = null
 let wsReconnectTimer: ReturnType<typeof setTimeout> | null = null
 let wsReconnectDelay = 3000
+let pendingSnapshot: Blob | null = null
+let snapshotFrameScheduled = false
 
 const stats = computed(() => [
   { label: '运行阶段', value: runtime.tradePhaseText, icon: LayersOutline, color: 'var(--primary)' },
@@ -186,13 +188,12 @@ function connectWs() {
   ws.onopen = () => {
     wsConnected.value = true
     wsReconnectDelay = 3000
-    ws?.send(JSON.stringify({ log: true, sc: true }))
+    updateWsSubscription()
   }
 
   ws.onmessage = (event) => {
     if (event.data instanceof Blob && autoSnapshot.value) {
-      if (wsSnapshotUrl.value) URL.revokeObjectURL(wsSnapshotUrl.value)
-      wsSnapshotUrl.value = URL.createObjectURL(event.data)
+      queueSnapshotRender(event.data)
     } else {
       try {
         const msg = JSON.parse(event.data)
@@ -218,6 +219,25 @@ function connectWs() {
   ws.onerror = () => { ws?.close() }
 }
 
+function queueSnapshotRender(blob: Blob) {
+  pendingSnapshot = blob
+  if (snapshotFrameScheduled) return
+  snapshotFrameScheduled = true
+  requestAnimationFrame(() => {
+    snapshotFrameScheduled = false
+    const latest = pendingSnapshot
+    pendingSnapshot = null
+    if (!latest || !autoSnapshot.value) return
+    if (wsSnapshotUrl.value) URL.revokeObjectURL(wsSnapshotUrl.value)
+    wsSnapshotUrl.value = URL.createObjectURL(latest)
+  })
+}
+
+function updateWsSubscription() {
+  if (ws?.readyState !== WebSocket.OPEN) return
+  ws.send(JSON.stringify({ log: true, sc: autoSnapshot.value }))
+}
+
 function scheduleReconnect() {
   if (wsReconnectTimer) return
   wsReconnectTimer = setTimeout(() => {
@@ -236,12 +256,15 @@ onMounted(() => {
     clearInterval(timer)
     if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null }
     if (ws) { ws.onclose = null; ws.close(); ws = null }
+    pendingSnapshot = null
     if (wsSnapshotUrl.value) { URL.revokeObjectURL(wsSnapshotUrl.value); wsSnapshotUrl.value = '' }
   })
 })
 
 watch(autoSnapshot, v => {
   localStorage.setItem('autoSnapshot', String(v))
+  updateWsSubscription()
+  pendingSnapshot = null
   if (!v && wsSnapshotUrl.value) {
     URL.revokeObjectURL(wsSnapshotUrl.value)
     wsSnapshotUrl.value = ''

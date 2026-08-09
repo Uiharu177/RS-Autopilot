@@ -22,12 +22,19 @@ def start_business():
     buy_city = data.get("buy_city", "")
     sell_city = data.get("sell_city", "")
 
-    if cities and len(cities) >= 2:
-        pass  # use cities list
+    if isinstance(cities, list) and len(cities) >= 2:
+        cities = [str(city).strip() for city in cities]
     elif buy_city and sell_city:
-        cities = [buy_city, sell_city]
+        cities = [str(buy_city).strip(), str(sell_city).strip()]
     else:
         return jsonify({"success": False, "error": "请提供城市列表（cities）或买卖城市（buy_city + sell_city）"}), 400
+
+    invalid_cities = [city for city in cities if city not in CITYS]
+    if invalid_cities:
+        return jsonify({
+            "success": False,
+            "error": f"城市名称无效: {', '.join(invalid_cities)}",
+        }), 400
 
     stop_device_actions()
     scheduler.unregister("resonance.solvers.trade.TradeRouteSolver")

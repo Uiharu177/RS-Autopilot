@@ -4,6 +4,7 @@ from unittest.mock import patch
 from resonance.device import device as device_state
 from resonance.solvers import recovery
 from resonance.solvers.trade import TradeRouteSolver
+from resonance.utils.exceptions import StopExecution
 
 
 class TradeStopActionTests(unittest.TestCase):
@@ -53,3 +54,28 @@ class TradeStopActionTests(unittest.TestCase):
         execute_action.assert_called_once_with("goto_main")
         execute_on_stop_action.assert_not_called()
         self.assertIsNone(solver._fatigue_action)
+
+    def test_manual_stop_skips_configured_stop_action(self):
+        device_state.STOP = True
+        solver = TradeRouteSolver()
+
+        with patch.object(solver, "ensure_connected", return_value="city"), patch.object(
+            solver, "_execute_on_stop_action"
+        ) as execute_on_stop_action:
+            result = solver._run_page_flow_locked()
+
+        self.assertTrue(result)
+        execute_on_stop_action.assert_not_called()
+
+    def test_transition_propagates_manual_stop_without_retry(self):
+        solver = TradeRouteSolver(cities=["A", "B"])
+
+        with patch.object(solver, "_transition_locked", side_effect=StopExecution()), patch(
+            "resonance.solvers.trade.diagnostics.start_trade_run"
+        ), patch(
+            "resonance.solvers.trade.diagnostics.finish"
+        ) as finish:
+            with self.assertRaises(StopExecution):
+                solver.transition()
+
+        finish.assert_called_once_with("stopped")

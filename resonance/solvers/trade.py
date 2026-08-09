@@ -31,6 +31,8 @@ from resonance.vision.ocr import predict
 from resonance.solvers.navigation import click_station, open_station_detail, travel_monitor
 from resonance.preset.control import click, go_home
 from resonance.utils.utils import read_json, RESOURCES_PATH
+from resonance.utils.exceptions import StopExecution, TaskExecutionFailed
+from resonance.debug import run_diagnostics as diagnostics
 
 _city_sell_data: Any = read_json(RESOURCES_PATH / "goods/CityGoodsSellData.json")
 city_sell_data = {
@@ -272,6 +274,7 @@ class TradeRouteSolver(BaseSolver):
         mode = "环线" if n > 2 else "端点"
         logger.info(f"开始第 {round_index}/{total_rounds} 轮{mode}跑商")
 
+        diagnostics.set_step("run_round", round_index=round_index, total_rounds=total_rounds)
         city_name = start_city or self._takeover_current_city()
         if not city_name:
             return None
@@ -291,6 +294,7 @@ class TradeRouteSolver(BaseSolver):
             if city_name == city.buy_city_name:
                 logger.info(f"已在出发站点 {city.buy_city_name}，跳过导航确认")
             else:
+                diagnostics.set_step("travel_to_buy_city", round_index=round_index, source=city_name, target=city.buy_city_name)
                 result = click_station(city.buy_city_name, cur_station=city_name)
                 if not result.ok:
                     return None
@@ -298,18 +302,23 @@ class TradeRouteSolver(BaseSolver):
                     return None
                 city_name = city.buy_city_name
 
+            diagnostics.set_step("enter_buy_exchange", round_index=round_index, city=city.buy_city_name)
             if not enter_exchange("buy"):
                 return None
 
+            diagnostics.set_step("check_buy_strength", round_index=round_index, city=city.buy_city_name)
             if not self._check_strength_and_use():
                 return None
 
             goods_data = list(city.goods_data.keys())
+            diagnostics.set_step("buy_goods", round_index=round_index, city=city.buy_city_name, haggle=city.haggle_num, book=city.book)
             if not buy_goods(goods_data[:1], goods_data[1:], city.haggle_num, book=city.book):
                 return None
+            diagnostics.set_step("leave_exchange", round_index=round_index, city=city.buy_city_name)
             if not leave_exchange():
                 return None
 
+            diagnostics.set_step("travel_to_sell_city", round_index=round_index, source=city_name, target=city.sell_city_name)
             result = click_station(city.sell_city_name, cur_station=city_name)
             if not result.ok:
                 return None
@@ -317,12 +326,15 @@ class TradeRouteSolver(BaseSolver):
                 return None
             city_name = city.sell_city_name
 
+            diagnostics.set_step("enter_sell_exchange", round_index=round_index, city=city.sell_city_name)
             if not enter_exchange("sell"):
                 return None
 
+            diagnostics.set_step("check_sell_strength", round_index=round_index, city=city.sell_city_name)
             if not self._check_strength_and_use():
                 return None
 
+            diagnostics.set_step("sell_goods", round_index=round_index, city=city.sell_city_name, haggle=city.sell_haggle_num)
             if not sell_goods(city.sell_haggle_num):
                 return None
 
@@ -423,6 +435,8 @@ class TradeRouteSolver(BaseSolver):
             if fatigue_action:
                 self._fatigue_action = None
                 self._execute_action(fatigue_action)
+            elif device_state.STOP:
+                logger.info("跑商已手动停止，保留当前游戏画面")
             else:
                 self._execute_on_stop_action()
 
@@ -461,17 +475,28 @@ class TradeRouteSolver(BaseSolver):
     def transition(self):
         """Execute configured number of complete trade route round trips."""
         if not _trade_route_lock.acquire(blocking=False):
-            logger.error("已有跑商任务正在执行，新任务不启动")
-            return True
+            raise TaskExecutionFailed("已有跑商任务正在执行，新任务不启动")
         try:
-            return self._transition_locked()
+            device_state.STOP = False
+            diagnostics.start_trade_run(self.cities, app.RunBuy.BuyCount)
+            try:
+                result = self._transition_locked()
+            except StopExecution:
+                diagnostics.finish("stopped")
+                raise
+            except BaseException as exc:
+                diagnostics.finish("failed", error=exc, capture_snapshot=True)
+                raise
+            diagnostics.finish("completed" if result else "deferred")
+            return result
         finally:
             _trade_route_lock.release()
 
     def _transition_locked(self):
+        diagnostics.set_step("connect_and_takeover")
         city_name = self.ensure_connected()
         if not city_name:
-            return True
+            raise TaskExecutionFailed("无法连接游戏或识别当前城市")
 
         count = app.RunBuy.BuyCount
         if count <= 0:
@@ -486,10 +511,10 @@ class TradeRouteSolver(BaseSolver):
             self._build_routes()
 
         try:
+            diagnostics.set_step("normalize_takeover_city", city=city_name)
             normalized_city = self._normalize_takeover_city(city_name)
             if not normalized_city:
-                logger.error("归位失败，结束跑商")
-                return True
+                raise TaskExecutionFailed("归位失败")
 
             for round_index in range(1, count + 1):
                 if device_state.STOP:
@@ -498,8 +523,7 @@ class TradeRouteSolver(BaseSolver):
 
                 next_city = self._run_one_round(round_index, count, start_city=normalized_city)
                 if not next_city:
-                    logger.error(f"第 {round_index}/{count} 轮{mode}跑商失败")
-                    return True
+                    raise TaskExecutionFailed(f"第 {round_index}/{count} 轮{mode}跑商失败")
                 normalized_city = next_city
 
             logger.info(f"{mode}跑商完成，共运行 {count} 轮")
@@ -509,5 +533,7 @@ class TradeRouteSolver(BaseSolver):
             if fatigue_action:
                 self._fatigue_action = None
                 self._execute_action(fatigue_action)
+            elif device_state.STOP:
+                logger.info("跑商已手动停止，保留当前游戏画面")
             else:
                 self._execute_on_stop_action()
