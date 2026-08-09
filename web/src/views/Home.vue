@@ -106,6 +106,7 @@ let wsReconnectTimer: ReturnType<typeof setTimeout> | null = null
 let wsReconnectDelay = 3000
 let pendingSnapshot: Blob | null = null
 let snapshotFrameScheduled = false
+let logSyncInFlight = false
 
 const stats = computed(() => [
   { label: '运行阶段', value: runtime.tradePhaseText, icon: LayersOutline, color: 'var(--primary)' },
@@ -132,6 +133,20 @@ async function refresh() {
   loading.value = true
   await Promise.all([runtime.fetchStatus(), runtime.fetchScene()])
   loading.value = false
+}
+
+async function syncLogTail() {
+  if (logSyncInFlight) return
+  logSyncInFlight = true
+  try {
+    const res = await api.debug.recentLogs(200)
+    runtime.replaceLogPayload(res.data)
+  } catch {
+    // The WebSocket continues to provide live logs when the HTTP backfill is
+    // temporarily unavailable.  A later visibility/focus event retries it.
+  } finally {
+    logSyncInFlight = false
+  }
 }
 
 async function loadBusinessConfig() {
@@ -189,6 +204,7 @@ function connectWs() {
     wsConnected.value = true
     wsReconnectDelay = 3000
     updateWsSubscription()
+    void syncLogTail()
   }
 
   ws.onmessage = (event) => {
@@ -247,13 +263,24 @@ function scheduleReconnect() {
   }, wsReconnectDelay)
 }
 
+function resumeForegroundUpdates() {
+  if (document.hidden) return
+  void syncLogTail()
+  void refresh()
+  connectWs()
+}
+
 onMounted(() => {
   refresh()
   loadBusinessConfig()
   const timer = setInterval(refresh, 15000)
   connectWs()
+  document.addEventListener('visibilitychange', resumeForegroundUpdates)
+  window.addEventListener('focus', resumeForegroundUpdates)
   onUnmounted(() => {
     clearInterval(timer)
+    document.removeEventListener('visibilitychange', resumeForegroundUpdates)
+    window.removeEventListener('focus', resumeForegroundUpdates)
     if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null }
     if (ws) { ws.onclose = null; ws.close(); ws = null }
     pendingSnapshot = null

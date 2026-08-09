@@ -8,7 +8,7 @@
 """
 
 import time
-from typing import List
+from typing import List, Literal, Optional, Tuple
 
 import cv2 as cv
 import numpy as np
@@ -35,20 +35,22 @@ def buy_business(
         book_used += 1
         logger.info(f"使用进货书: {book_used}/{max_book}")
         input_tap((1081, 100))
+        # The item panel may still be handling quantity/selection state after
+        # it first appears.  Do not turn this flow into an eager poll: an early
+        # confirmation can make the no-quantity-change path exit the purchase.
         time.sleep(2.0)
         results = predict(screenshot_image())
         found = False
         for item in results:
-            text = item["text"]
-            if "进货" in text:
-                pos = item["position"]
-                cx = int((pos[0][0] + pos[2][0]) / 2)
-                cy = int((pos[0][1] + pos[2][1]) / 2)
-                logger.info(f"找到进货书行: y={cy}")
-                input_tap((920, cy))
-                time.sleep(2.0)
-                found = True
-                break
+            if "进货" not in item["text"]:
+                continue
+            pos = item["position"]
+            cy = int((pos[0][1] + pos[2][1]) / 2)
+            logger.info(f"找到进货书行: y={cy}")
+            input_tap((920, cy))
+            time.sleep(2.0)
+            found = True
+            break
         if found:
             for _ in range(3):
                 popup = predict(screenshot_image(), cropped_pos1=(300, 420), cropped_pos2=(1050, 560))
@@ -118,14 +120,11 @@ def buy_business(
         time.sleep(0.5)
         new_boatload = get_boatload()
         if new_boatload == prev:
-            logger.info(f"载货量未变化 ({prev}% -> {new_boatload}%)，重试一次")
+            logger.info(f"载货量暂未变化 ({prev}% -> {new_boatload}%)，仅复查，不重复点击同一商品")
             time.sleep(0.5)
-            result, _ = buy_good(good, 0, max_book)
-            if result:
-                time.sleep(0.5)
-                new_boatload = get_boatload()
+            new_boatload = get_boatload()
         if new_boatload == prev:
-            logger.info(f"载货量仍未变化 ({prev}% -> {new_boatload}%)，跳过")
+            logger.info(f"载货量仍未变化 ({prev}% -> {new_boatload}%)，不重复点击，跳过")
         else:
             logger.info(f"剩余载货量: {new_boatload}%")
         return True
@@ -172,40 +171,87 @@ def _ocr_goods_list():
     return image.ocr()
 
 
-def _match_good_name(data, good):
-    """在 OCR data 里找商品名，返回 (cx, cy) 或 None。
-    匹配规则：完全相等，或等长且仅差1字且首/尾字相同。
-    位置验证：下方 +10~35px 内必须有百分比文本（endswith %），否则视为价格行误识别。"""
+_GoodState = Literal["absent", "locked", "buyable", "uncertain"]
+_LOCK_MARKERS = ("投资", "声望", "解锁", "锁定", "未开放")
+
+
+def _ocr_center(item: dict) -> Tuple[float, float]:
+    position = item["position"]
+    return (
+        (position[0][0] + position[2][0]) / 2,
+        (position[0][1] + position[2][1]) / 2,
+    )
+
+
+def _is_good_name(text: str, good: str) -> bool:
+    return text == good or (
+        len(text) == len(good)
+        and _chars_diff(text, good) == 1
+        and (text[0] == good[0] or text[-1] == good[-1])
+    )
+
+
+def _classify_good_candidate(data: list[dict], item: dict) -> _GoodState:
+    """Classify one matched product row without ever treating missing data as buyable.
+
+    Product names, price percentages and lock hints move slightly with OCR and
+    UI scale, but they remain inside the same ~one-card-height band.  A lock
+    hint always wins.  Missing evidence is deliberately "uncertain" so a
+    covered lock label can never turn into a blind click.
+    """
+    cx, cy = _ocr_center(item)
+    card_items = []
+    for other in data:
+        ox, oy = _ocr_center(other)
+        # A product card is about 110 px high.  Percentages and lock labels
+        # belong under the product name, with a small tolerance above it for
+        # OCR bounding-box jitter.
+        if cy - 12 <= oy <= cy + 72 and abs(ox - cx) <= 170:
+            card_items.append((other["text"], ox, oy))
+
+    lock_text = next((text for text, _, _ in card_items if any(marker in text for marker in _LOCK_MARKERS)), None)
+    if lock_text:
+        logger.info(f"商品卡锁定检测命中: y={cy:.0f}, text={lock_text}")
+        return "locked"
+
+    if any(text.rstrip().endswith("%") for text, _, _ in card_items):
+        return "buyable"
+
+    return "uncertain"
+
+
+def _find_good_state(data: list[dict], good: str) -> Tuple[_GoodState, Optional[Tuple[int, int]]]:
+    """Return the target item's conservative state and click point, if safe."""
     for item in data:
         text = item["text"]
-        if not (text == good or (len(text) == len(good) and _chars_diff(text, good) == 1 and (text[0] == good[0] or text[-1] == good[-1]))):
+        if not _is_good_name(text, good):
             continue
-        cy = (item["position"][0][1] + item["position"][2][1]) / 2
-        cx = (item["position"][0][0] + item["position"][2][0]) / 2
-        has_pct_below = False
-        for other in data:
-            oy = (other["position"][0][1] + other["position"][2][1]) / 2
-            if cy + 10 <= oy <= cy + 35 and other["text"].endswith("%"):
-                has_pct_below = True
-                break
-        if not has_pct_below:
-            logger.info(f"匹配{good}(OCR={text})但下方无百分比，疑似误识别: y={cy:.0f}")
-            continue
+        cx, cy = _ocr_center(item)
+        state = _classify_good_candidate(data, item)
         pos = (int(cx), int(cy))
-        logger.info(f"匹配商品: 目标={good}, OCR={text}, pos={pos}")
-        return pos
-    return None
+        if state == "buyable":
+            logger.info(f"商品卡可购买: 目标={good}, OCR={text}, pos={pos}")
+        elif state == "uncertain":
+            logger.info(f"商品卡状态不确定，暂不点击: 目标={good}, OCR={text}, y={cy:.0f}")
+        return state, pos
+    return "absent", None
+
+
+def _match_good_name(data, good):
+    """Compatibility helper: only expose a click point for a confirmed card."""
+    state, pos = _find_good_state(data, good)
+    return pos if state == "buyable" else None
 
 
 def _is_locked(data, pos_y):
-    """检查商品名下方 +10~55px 内是否有锁文本（投资/声望/解锁）"""
-    y1 = pos_y + 10
-    y2 = pos_y + 55
+    """Compatibility helper for callers that only have a product row Y value."""
+    y1 = pos_y - 12
+    y2 = pos_y + 72
     for item in data:
         text = item["text"]
         oy = (item["position"][0][1] + item["position"][2][1]) / 2
         if y1 <= oy <= y2:
-            if "投资" in text or "声望" in text or "解锁" in text:
+            if any(marker in text for marker in _LOCK_MARKERS):
                 logger.info(f"锁定检测命中: y={oy:.0f}, text={text}")
                 return True
     return False
@@ -227,75 +273,74 @@ def _goods_signature(data):
 
 def buy_good(good: str, book: int, max_book: int, again: bool = False):
     logger.info(f"正在购买: {good}")
+    # 商品列表是类似短视频的分页流：手指上 -> 下回到前面的商品，
+    # 手指下 -> 上查看后面的商品。先用前者归顶，再用后者单向搜索到底。
+    swipe_to_top = ((693, 314), (678, 558))
+    swipe_toward_bottom = ((678, 558), (693, 314))
 
-    # 先在当前页面找
-    data = _ocr_goods_list()
-    pos = _match_good_name(data, good)
-    if pos:
-        if _is_locked(data, pos[1]):
+    def try_current_page(data: list[dict]) -> Tuple[_GoodState, Optional[Tuple[int, int]]]:
+        state, pos = _find_good_state(data, good)
+        if state != "uncertain":
+            return state, pos
+
+        # A dialogue or a transient render can hide a card label for one OCR
+        # frame. Retry briefly, but never transform uncertainty into a click.
+        for retry in range(1, 3):
+            time.sleep(0.4)
+            state, pos = _find_good_state(_ocr_goods_list(), good)
+            if state in ("buyable", "locked"):
+                logger.info(f"商品卡短重试 {retry}/2: {state}")
+                return state, pos
+            # A one-frame OCR miss cannot prove that the earlier incomplete
+            # card disappeared.  Keep the conservative uncertain state.
+        logger.warning(f"商品{good}卡片信息持续不完整，保守跳过，不执行整页往返搜索")
+        return "uncertain", pos
+
+    def click_if_buyable(data: list[dict]) -> Optional[bool]:
+        state, pos = try_current_page(data)
+        if state == "locked":
             logger.info(f"商品{good}未解锁，跳过")
-            return False, book
+            return False
+        if state == "uncertain":
+            return False
+        if state != "buyable" or pos is None:
+            return None
         logger.info(f"点击商品: {good}, pos={pos}")
         click(pos)
         time.sleep(0.3)
-        return True, book
+        return True
 
-    # 阶段1：从当前位置下滑搜索
-    last_sig = _goods_signature(data)
-    same_count = 0
-    for _ in range(20):
-        input_swipe_hold((693, 314), (678, 558), swipe_time=500, hold_ms=400)
-        time.sleep(0.8)
-        data = _ocr_goods_list()
-        pos = _match_good_name(data, good)
-        if pos:
-            if _is_locked(data, pos[1]):
-                logger.info(f"商品{good}未解锁，跳过")
-                return False, book
-            logger.info(f"点击商品: {good}, pos={pos}")
-            click(pos)
-            time.sleep(0.3)
-            return True, book
+    # 先在当前页面找
+    data = _ocr_goods_list()
+    result = click_if_buyable(data)
+    if result is not None:
+        return result, book
 
-        sig = _goods_signature(data)
-        if sig == last_sig:
-            same_count += 1
-            if same_count >= 2:
-                logger.info("已滑到底，上滑到顶再搜")
-                break
-        else:
-            same_count = 0
-        last_sig = sig
-    else:
-        logger.info(f"未找到商品: {good}")
-        return False, book
-
-    # 阶段2：上滑到顶
+    # 阶段1：先归位到列表顶部。手指上 -> 下会回到前面的卡片，
+    # 直到画面不再变化即表示已经到达顶部。归位阶段只移动，不点击，避免漏掉
+    # 顶部卡片或在中途改变购买顺序。
     last_sig = _goods_signature(data)
     for _ in range(10):
-        input_swipe_hold((678, 558), (693, 314), swipe_time=500, hold_ms=400)
+        input_swipe_hold(*swipe_to_top, swipe_time=500, hold_ms=400)
         time.sleep(0.8)
         data = _ocr_goods_list()
         sig = _goods_signature(data)
         if sig == last_sig:
-            logger.info("已滑到顶")
+            logger.info("已归位列表顶部，开始手指下 -> 上逐屏搜索")
             break
         last_sig = sig
+    else:
+        logger.info(f"未能归位到商品列表顶部: {good}")
+        return False, book
 
-    # 阶段3：从顶下滑搜索
+    # 阶段2：从顶部单向向下搜索。手指下 -> 上会查看后面的卡片，
+    # 移动，逐屏检查并在命中后立即点击，不再做第二次完整往返。
     last_sig = None
     same_count = 0
     for _ in range(20):
-        data = _ocr_goods_list()
-        pos = _match_good_name(data, good)
-        if pos:
-            if _is_locked(data, pos[1]):
-                logger.info(f"商品{good}未解锁，跳过")
-                return False, book
-            logger.info(f"点击商品: {good}, pos={pos}")
-            click(pos)
-            time.sleep(0.3)
-            return True, book
+        result = click_if_buyable(data)
+        if result is not None:
+            return result, book
 
         sig = _goods_signature(data)
         if sig == last_sig:
@@ -307,8 +352,9 @@ def buy_good(good: str, book: int, max_book: int, again: bool = False):
             same_count = 0
         last_sig = sig
 
-        input_swipe_hold((693, 314), (678, 558), swipe_time=500, hold_ms=400)
+        input_swipe_hold(*swipe_toward_bottom, swipe_time=500, hold_ms=400)
         time.sleep(0.8)
+        data = _ocr_goods_list()
 
     logger.info(f"未找到商品: {good}")
     return False, book

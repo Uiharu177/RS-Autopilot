@@ -57,6 +57,8 @@ const api = {
     snapshot: (templates: string[] = [], reason = 'frontend') =>
       axios.post(`${API_BASE}/debug/snapshot`, { templates, reason }),
     logs: () => axios.get(`${API_BASE}/debug/logs`),
+    recentLogs: (lines = 200) =>
+      axios.get(`${API_BASE}/debug/logs/recent`, { params: { lines } }),
     readLog: (filename: string, limit = 500) =>
       axios.get(`${API_BASE}/debug/logs/${filename}`, { params: { limit } }),
     timeline: (filename: string) =>

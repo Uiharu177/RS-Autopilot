@@ -121,6 +121,21 @@ export const useRuntimeStore = defineStore('runtime', () => {
     return lines.length
   }
 
+  function replaceLogPayload(payload: unknown) {
+    const data = payload as any
+    const rawLines = normalizeLogLines(payload)
+    const lines = Array.isArray(data?.lines) ? latestSessionLines(rawLines) : rawLines
+    const retainedLines = lines.filter((line: string) => !line.includes('[SC]')).slice(-MAX_LOG_LINES)
+
+    logLines.value = []
+    logContent.value = ''
+    currentStep.value = '等待任务'
+    tradePhase.value = 'idle'
+    for (const line of retainedLines) appendLog(line)
+    logTailLoaded.value = true
+    return retainedLines.length
+  }
+
   function clearLog() {
     logLines.value = []
     logContent.value = ''
@@ -148,6 +163,7 @@ export const useRuntimeStore = defineStore('runtime', () => {
     fetchScene,
     appendLog,
     appendLogPayload,
+    replaceLogPayload,
     clearLog,
   }
 })

@@ -104,7 +104,7 @@ def boot_game(port: Optional[int] = None) -> Optional[str]:
                 )
             )
             if result.ok and result.state:
-                city = result.state.city or identify_city() or _resolve_fallback()
+                city = result.state.city or identify_city(assume_ready=True) or _resolve_fallback()
                 if city:
                     return city
             continue
@@ -128,7 +128,7 @@ def boot_game(port: Optional[int] = None) -> Optional[str]:
         if scene in _BUSINESS_SCENES:
             logger.info(f"在业务页面 {scene.name}，返回首页")
             safe_go_home()
-            city = identify_city()
+            city = identify_city(assume_ready=True)
             if city:
                 logger.info(f"返回首页成功，当前城市: {city}")
                 return city
@@ -150,7 +150,7 @@ def boot_game(port: Optional[int] = None) -> Optional[str]:
             )
         )
         if result.ok and result.state:
-            city = result.state.city or identify_city() or _resolve_fallback()
+            city = result.state.city or identify_city(assume_ready=True) or _resolve_fallback()
             if city:
                 logger.info(f"启动恢复完成，当前城市: {city}")
                 return city

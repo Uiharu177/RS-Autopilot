@@ -47,34 +47,104 @@ def _current_exchange_texts() -> List[str]:
 
 
 def _is_exchange_opened(texts: List[str]) -> bool:
-    has_exchange_title = any("交易所" in text for text in texts)
-    has_entry_action = any("我要买" in text or "我要卖" in text for text in texts)
-    if has_exchange_title and has_entry_action:
+    if _is_exchange_entry(texts):
         return True
     return _is_exchange_tab("buy", texts) or _is_exchange_tab("sell", texts)
 
 
+def _is_exchange_entry(texts: List[str]) -> bool:
+    """Return whether the exchange landing page, not a trade tab, is open."""
+    has_exchange_title = any("交易所" in text for text in texts)
+    has_entry_action = any("我要买" in text or "我要卖" in text for text in texts)
+    return has_exchange_title and has_entry_action
+
+
 def _is_exchange_tab(tab: Literal["buy", "sell"], texts: List[str]) -> bool:
+    """Return whether OCR contains a tab-specific exchange marker.
+
+    This check guards fixed-coordinate input.  Keep its markers deliberately
+    narrow: generic labels such as "货舱" and "利润" also occur on the
+    main screen and must never authorize a trade action.
+    """
     markers = (
         ("全部买入", "预计买入", "买入总价", "DISPLAY")
         if tab == "buy"
-        else ("全部卖出", "预计卖出", "卖出总价", "货舱", "WAREHOUSE", "利润", "抬价幅度")
+        else ("全部卖出", "预计卖出", "卖出总价", "抬价幅度")
     )
     return any(marker in text for text in texts for marker in markers)
 
 
+def _is_sell_page_ready(attempts: int = 2, interval: float = 0.35) -> bool:
+    """Verify the sell tab before any fixed-coordinate sell input.
+
+    OCR may transiently miss one label while the tab is opening, so this allows
+    one short recheck.  A missing marker is treated as unsafe rather than
+    guessing from UI colours or generic text.
+    """
+    for attempt in range(attempts):
+        if _is_exchange_tab("sell", _current_exchange_texts()):
+            return True
+        if attempt + 1 < attempts:
+            time.sleep(interval)
+    return False
+
+
+def _wait_exchange_open(timeout: float = 2.0, interval: float = 0.25) -> bool:
+    """Wait only until an exchange marker appears after a known outlet tap."""
+    deadline = time.perf_counter() + timeout
+    while time.perf_counter() < deadline:
+        if _is_exchange_opened(_current_exchange_texts()):
+            return True
+        if _current_scene() in (Scene.EXCHANGE, Scene.EXCHANGE_BUY, Scene.EXCHANGE_SELL):
+            return True
+        time.sleep(interval)
+    return False
+
+
+def _try_cached_outlet(city: Optional[str], name: str) -> bool:
+    """Use a previously OCR-confirmed point only after verifying this city/name pair.
+
+    The cache is strictly an in-process fast path. A failed verification
+    removes it and falls through to dynamic OCR and scrolling.
+    """
+    if not city:
+        return False
+    pos = OUTLET_TAP_CACHE.get((city, name))
+    if pos is None:
+        return False
+    logger.info(f"交易所缓存尝试: city={city}, pos={pos}")
+    input_tap(pos)
+    if _wait_exchange_open(timeout=1.5):
+        logger.info(f"交易所缓存验证成功: city={city}")
+        return True
+    OUTLET_TAP_CACHE.pop((city, name), None)
+    logger.info(f"交易所缓存失效，回退动态OCR: city={city}")
+    return False
+
+
 def _switch_exchange_tab(tab: Literal["buy", "sell"]) -> bool:
     texts = _current_exchange_texts()
-    if not _is_exchange_opened(texts):
-        return False
     if _is_exchange_tab(tab, texts):
         return True
-    input_tap((120, 670) if tab == "buy" else (335, 670))
+
+    if not _is_exchange_entry(texts):
+        return False
+
+    # The exchange landing page has large "我要买 / 我要卖" buttons.  It is
+    # not the trade-tab page, so the bottom buy/sell tab coordinates must not
+    # be used here.  A following tab-specific OCR check is still required.
+    entry_pos = (960, 321) if tab == "buy" else (960, 405)
+    logger.info(f"交易所入口页：点击我要{'买' if tab == 'buy' else '卖'}")
+    input_tap(entry_pos)
     time.sleep(1.0)
     return _is_exchange_tab(tab, _current_exchange_texts())
 
 
-def _wait_exchange_ocr_click(timeout: float = 15.0, initial_results: Optional[List[dict]] = None) -> bool:
+def _wait_exchange_ocr_click(
+    timeout: float = 15.0,
+    initial_results: Optional[List[dict]] = None,
+    cache_key: Optional[Tuple[str, str]] = None,
+) -> bool:
     aliases = ("交易所", "平交易所", "巫交易所", "亚交易所", "交易所-武林市集")
     start = time.perf_counter()
     pending_results = initial_results
@@ -103,10 +173,10 @@ def _wait_exchange_ocr_click(timeout: float = 15.0, initial_results: Optional[Li
             pos = (center_x, center_y + 35)
             logger.info(f"交易所OCR稳定命中: {text}")
             get_device().input_tap(pos[0], pos[1])
-            time.sleep(1.0)
-            if _is_exchange_opened(_current_exchange_texts()):
-                return True
-            if Recognizer().scene in (Scene.EXCHANGE, Scene.EXCHANGE_BUY, Scene.EXCHANGE_SELL):
+            if _wait_exchange_open():
+                if cache_key is not None:
+                    OUTLET_TAP_CACHE[cache_key] = pos
+                    logger.info(f"交易所缓存已记录: city={cache_key[0]}, pos={pos}")
                 return True
         time.sleep(0.25)
     return False
@@ -157,11 +227,14 @@ def find_outlet(name: str) -> bool:
             ocr_results = recog.ocr()
         city = _pick_city_name(ocr_results)
         logger.info(f"前往 => {name}")
-        if _wait_exchange_ocr_click(timeout=3.0, initial_results=ocr_results):
+        cache_key = (city, name) if city else None
+        if _try_cached_outlet(city, name):
+            return True
+        if _wait_exchange_ocr_click(timeout=3.0, initial_results=ocr_results, cache_key=cache_key):
             return True
         input_swipe((900, 260), (420, 560), swipe_time=700)
         time.sleep(0.5)
-        if _wait_exchange_ocr_click():
+        if _wait_exchange_ocr_click(cache_key=cache_key):
             return True
         if city == "修格里城":
             return _enter_shoggolith_exchange_fixed()
@@ -253,30 +326,15 @@ def enter_exchange(tab: Literal["buy", "sell"] = "buy") -> bool:
             return False
         logger.info(f"交易所: 标题颜色未命中，根据页面标记继续")
 
-    if tab == "buy":
-        input_tap((927, 321))
-    elif tab == "sell":
-        input_tap((932, 404))
-    time.sleep(1.0)
-
-    if _is_exchange_tab(tab, _current_exchange_texts()):
-        return True
-
-    bgr = screenshot().get_bgr((1175, 460))
-    logger.debug(f"进入交易所颜色检查: {bgr}")
-    if (
-        BGR(0, 123, 240) <= bgr <= BGR(2, 133, 255)
-        or BGR(220, 220, 220) <= bgr <= BGR(235, 235, 235)
-        or BGR(0, 170, 240) <= bgr <= BGR(5, 185, 255)
-        or BGR(80, 80, 80) <= bgr <= BGR(115, 115, 115)
-        or BGR(120, 120, 120) <= bgr <= BGR(155, 155, 155)
-    ):
+    if _switch_exchange_tab(tab):
         return True
 
     texts = _current_exchange_texts()
     if _is_exchange_opened(texts):
-        logger.info("交易所: 页面标记命中，放行")
-        return True
+        if _switch_exchange_tab(tab):
+            return True
+        logger.error(f"交易所已打开，但未能确认{tab}页签")
+        return False
 
     logger.error("进入交易所失败")
     return False
@@ -296,7 +354,7 @@ def leave_exchange():
 # ========================================================================
 
 
-def _select_all() -> bool:
+def _select_all() -> Optional[bool]:
     start = time.perf_counter()
     while time.perf_counter() - start < 15:
         image = screenshot()
@@ -308,8 +366,8 @@ def _select_all() -> bool:
             time.sleep(0.5)
             break
     if _sell_goods_empty():
-        logger.error("检测到未成功出售物品")
-        return False
+        logger.info("车厢为空，无需清货")
+        return None
     return True
 
 
@@ -338,12 +396,22 @@ def _confirm_sell() -> bool:
 
 
 def sell_goods(haggle: int = 0) -> bool:
-    if not _select_all():
+    if not _is_sell_page_ready():
+        logger.error("卖货前页面验证失败，拒绝点击固定坐标以避免误触")
+        return False
+
+    selection = _select_all()
+    if selection is None:
         logger.info("无货物可卖，跳过卖货")
         return True
+    if not selection:
+        logger.error("出售货物失败：无法完成全选")
+        return False
     if not _bargain_sell(haggle):
+        logger.error("出售货物失败：议价流程未完成")
         return False
     if not _confirm_sell():
+        logger.error("出售货物失败：已选中货物，但出售确认未完成")
         return False
     time.sleep(0.5)
     input_tap((896, 676))

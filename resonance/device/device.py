@@ -505,15 +505,36 @@ def screenshot_image() -> cv.typing.MatLike:
     return screenshot
 
 
-def wait_stopped(threshold=7100000):
-    logger.info("等待图像静止")
-    while True:
-        gray1 = cv.cvtColor(screenshot_image(), cv.COLOR_BGR2GRAY)
-        time.sleep(0.5)
-        gray2 = cv.cvtColor(screenshot_image(), cv.COLOR_BGR2GRAY)
-        diff = cv.absdiff(gray1, gray2)
-        diff_sum: int = np.sum(diff)
-        logger.debug(f"画面差异 {diff_sum}")
-        if diff_sum < threshold:
-            break
-        time.sleep(1)
+def wait_stopped(
+    threshold: int = 7100000,
+    timeout: float = 3.0,
+    cropped_pos1: Tuple[int, int] = (196, 100),
+    cropped_pos2: Tuple[int, int] = (1084, 620),
+) -> bool:
+    """Wait briefly for stable map pixels, never forever for decorative UI.
+
+    This does not need to find a station.  It compares the whole safe map
+    viewport, excluding top bars and edge controls, so an empty map center
+    cannot alone declare a moving map stable.  Later OCR/template validation
+    remains responsible for deciding whether a target station exists.
+    """
+    logger.info(f"等待地图画面静止（上限 {timeout:.1f}s）")
+    deadline = time.perf_counter() + max(0.0, timeout)
+    viewport_area = max(1, (cropped_pos2[0] - cropped_pos1[0]) * (cropped_pos2[1] - cropped_pos1[1]))
+    full_area = 1280 * 720
+    # Existing callers pass the old full-screen threshold. Scale it to the
+    # viewport so cropping UI does not make the stability test too permissive.
+    effective_threshold = int(threshold * viewport_area / full_area)
+    while time.perf_counter() < deadline:
+        image1 = screenshot_image()[cropped_pos1[1]:cropped_pos2[1], cropped_pos1[0]:cropped_pos2[0]]
+        gray1 = cv.cvtColor(image1, cv.COLOR_BGR2GRAY)
+        _sleep_or_stop(min(0.3, max(0.0, deadline - time.perf_counter())))
+        image2 = screenshot_image()[cropped_pos1[1]:cropped_pos2[1], cropped_pos1[0]:cropped_pos2[0]]
+        gray2 = cv.cvtColor(image2, cv.COLOR_BGR2GRAY)
+        diff_sum: int = int(np.sum(cv.absdiff(gray1, gray2)))
+        logger.debug(f"地图区域画面差异 {diff_sum}")
+        if diff_sum < effective_threshold:
+            return True
+        _sleep_or_stop(min(0.3, max(0.0, deadline - time.perf_counter())))
+    logger.warning("地图画面未在上限内完全静止，继续导航校验")
+    return False

@@ -66,6 +66,22 @@ def _is_visit_city_text(text: str) -> bool:
     return "访问城市" in text or "访问地区" in text
 
 
+_VISIT_CITY_REGION = ((1060, 430), (1280, 570))
+
+
+def _visit_city_entry_from_ocr(results: list[dict]) -> Optional[Tuple[int, int]]:
+    for item in results:
+        text = item["text"]
+        if not _is_visit_city_text(text):
+            continue
+        position = item["position"]
+        center_x = int((position[0][0] + position[2][0]) / 2)
+        center_y = int((position[0][1] + position[2][1]) / 2)
+        if _is_visit_city_entry((center_x, center_y)):
+            return center_x, center_y
+    return None
+
+
 COARSE_RESERVE_PX = 0.0
 MAP_CENTER = (640, 360)
 WORLD_TO_SCREEN = 1.5
@@ -1080,10 +1096,27 @@ def get_station(is_go_home: bool = True) -> str:
 
 def go_city(max_attempts: int = 10) -> bool:
     for _ in range(max_attempts):
-        if Recognizer().scene == Scene.CITY_VIEW:
+        # The city-page badge is stable, unlike the individual outlets.  Check
+        # it before invoking the much slower full-screen OCR fallback.
+        image = screenshot()
+        if image.crop_image(
+            cropped_pos1=(25, 634), cropped_pos2=(99, 707)
+        ).match_template(RESOURCES_PATH / "scene/fame.png", 0.95):
             return True
 
-        results = predict(screenshot_image())
+        frame = screenshot_image()
+        entry = _visit_city_entry_from_ocr(
+            predict(frame, cropped_pos1=_VISIT_CITY_REGION[0], cropped_pos2=_VISIT_CITY_REGION[1])
+        )
+        if entry:
+            logger.info(f"右下进城入口局部识别命中: {entry}，点击")
+            input_tap(entry)
+            time.sleep(2.0)
+            continue
+
+        # Fallback keeps the original safeguards for dynamic city layouts and
+        # task-detail overlays.  Do not replace it with a fixed coordinate.
+        results = predict(frame)
         outlet_hits = sum(
             1
             for item in results
@@ -1092,30 +1125,18 @@ def go_city(max_attempts: int = 10) -> bool:
         if outlet_hits >= 2:
             return True
 
-        image = screenshot()
-        is_city = image.crop_image(
-            cropped_pos1=(25, 634), cropped_pos2=(99, 707)
-        ).match_template(RESOURCES_PATH / "scene/fame.png", 0.95)
-        if is_city:
-            return True
-
         clicked = False
         has_task_detail = False
         for item in results:
             text = item["text"]
             if any(marker in text for marker in ("推荐等级", "累计", "迎战", "报酬", "任务")):
                 has_task_detail = True
-            if not _is_visit_city_text(text):
-                continue
-            position = item["position"]
-            center_x = int((position[0][0] + position[2][0]) / 2)
-            center_y = int((position[0][1] + position[2][1]) / 2)
-            if _is_visit_city_entry((center_x, center_y)):
-                pos = (center_x, center_y)
-                logger.info(f"检测到右下进城入口 {text}: {(center_x, center_y)}，点击 {pos}")
-                input_tap(pos)
-                clicked = True
-                break
+
+        entry = _visit_city_entry_from_ocr(results)
+        if entry:
+            logger.info(f"右下进城入口全屏兜底命中: {entry}，点击")
+            input_tap(entry)
+            clicked = True
         if not clicked:
             logger.info("主界面未定位右下访问城市/访问地区入口")
         if not clicked and has_task_detail:

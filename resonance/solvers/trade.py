@@ -171,7 +171,8 @@ class TradeRouteSolver(BaseSolver):
         if city_name in self.cities:
             logger.info(f"{city_name} 在环线中，先清空车厢")
             if not self._sell_current_goods(0):
-                logger.warning("清空车厢失败，可能车厢已空或无货可卖，继续")
+                logger.error("清空车厢未完成，拒绝带货进入第一轮跑商")
+                return None
             return city_name
 
         target = self.cities[0]
@@ -182,7 +183,8 @@ class TradeRouteSolver(BaseSolver):
 
         logger.info(f"归位：{city_name} 卖货")
         if not self._sell_current_goods(0):
-            logger.warning("归位卖货失败，可能车厢已空或无货可卖，继续")
+            logger.error("归位卖货未完成，拒绝带货继续归位流程")
+            return None
 
         logger.info(f"归位：{city_name} 买货")
         if not self._buy_current_city_goods(route):

@@ -31,7 +31,7 @@ from loguru import logger
 from resonance.debug.snapshot import capture_debug_snapshot
 from resonance.device.adb import ADB
 from resonance.device import device as device_state
-from resonance.device.device import get_device, input_back, input_tap, restart_game, screenshot
+from resonance.device.device import get_device, input_back, input_tap, restart_game, screenshot, stop_game
 from resonance.model import app
 from resonance.scene.recognizer import Recognizer
 from resonance.scene.scene import Scene
@@ -111,6 +111,51 @@ def _wait_scene_leave(scene: Scene, timeout: float = 8.0) -> bool:
     return False
 
 
+def _tap_login_until_scene_changes(
+    timeout: float = 45.0,
+    retry_interval: float = 4.0,
+) -> bool:
+    """Retry the login entry at a measured cadence while preserving a long total cap.
+
+    The first tap can be swallowed while the login page is still rendering.
+    Retrying after a few seconds avoids the previous 45-second blind wait,
+    without assuming that a real game load is faster than it is.
+    """
+    deadline = time.perf_counter() + timeout
+    next_tap = 0.0
+    taps = 0
+    while time.perf_counter() < deadline:
+        if device_state.STOP:
+            raise StopExecution()
+        now = time.perf_counter()
+        if now >= next_tap:
+            # A network retry dialog or resource update can appear on top of
+            # the login page.  Handle the overlay first and never stack a
+            # login tap into the same iteration.
+            recog = Recognizer()
+            if handle_startup_interruption(recog):
+                next_tap = now + retry_interval
+                _interruptible_sleep(1.0)
+                continue
+            if recog.scene == Scene.LOADING:
+                logger.info("恢复流程：检测到网络/资源加载层，暂停登录点击")
+                next_tap = now + retry_interval
+                _interruptible_sleep(1.0)
+                continue
+            _tap_login(Recognizer())
+            taps += 1
+            next_tap = now + retry_interval
+            if taps > 1:
+                logger.info(f"恢复流程：登录页仍在，短周期重试点击 ({taps})")
+        _interruptible_sleep(min(1.0, max(0.0, deadline - time.perf_counter())))
+        current = Recognizer().scene
+        if current != Scene.LOGIN:
+            logger.info(f"恢复流程：登录页已离开 -> {current.name}")
+            return True
+    logger.warning("恢复流程：登录页重试等待超时")
+    return False
+
+
 def _short_wait_scene_change(current: Scene, timeout: float = 60.0, interval: float = 1.0) -> bool:
     logger.info(f"恢复流程：短等场景 {current.name} 恢复 (超时={timeout}s)")
     start = time.perf_counter()
@@ -167,6 +212,35 @@ def _tap_text(results: list, keywords: tuple[str, ...], log_text: str) -> bool:
     return False
 
 
+def _is_network_unavailable_dialog(results: list) -> bool:
+    """Recognize the persistent reconnect dialog, independent of OCR splitting."""
+    network_text = "".join(str(item.get("text", "")).replace(" ", "") for item in results)
+    markers = (
+        "当前网络不佳，请尝试重新连接",
+        "当前网络不佳",
+        "尝试重新连接",
+    )
+    return any(marker in network_text for marker in markers)
+
+
+def _abort_for_network_outage(context: RecoveryContext, attempts: int, actions: list[str]) -> RecoveryResult:
+    """End the active task and close the game after persistent network failure."""
+    snapshot = capture_debug_snapshot(reason=f"{context.step}:network_reconnect_exhausted")
+    logger.error("网络重连连续失败 5 次，停止任务并关闭游戏")
+    stop_result = stop_game()
+    if not stop_result.get("success"):
+        logger.error(f"网络故障终止时关闭游戏失败: {stop_result.get('error', 'unknown error')}")
+    device_state.STOP = True
+    actions.append("stop_game_after_network_reconnect_exhausted")
+    return RecoveryResult(
+        ok=False,
+        reason="network reconnect attempts exhausted",
+        attempts=attempts,
+        snapshot=snapshot.get("screenshot"),
+        actions=actions,
+    )
+
+
 def handle_startup_interruption(recog: Recognizer) -> bool:
     """Handle login/update/news/battle overlays before generic recovery."""
     results = recog.ocr()
@@ -183,9 +257,7 @@ def handle_startup_interruption(recog: Recognizer) -> bool:
     # This dialog is commonly OCR'd as one exact line, but it may also be
     # split into several text boxes. Never wait on it as UNKNOWN: click the
     # reconnect/retry action first and let the caller re-detect the scene.
-    network_text = "".join(item["text"].replace(" ", "") for item in results)
-    network_markers = ("当前网络不佳，请尝试重新连接", "当前网络不佳", "尝试重新连接")
-    if any(marker in network_text for marker in network_markers):
+    if _is_network_unavailable_dialog(results):
         for item in results:
             if any(keyword in item["text"] for keyword in ("重新连接", "重试", "确定", "确认")):
                 input_tap(_ocr_center(item))
@@ -256,10 +328,10 @@ def click_arrive_city() -> bool:
     return False
 
 
-def identify_city() -> Optional[str]:
+def identify_city(assume_ready: bool = False) -> Optional[str]:
     from resonance.solvers.city import identify_city_from_current_screen, _pick_city_name
 
-    city = identify_city_from_current_screen()
+    city = identify_city_from_current_screen(assume_ready=assume_ready)
     if city:
         return city
 
@@ -324,6 +396,8 @@ def inspect_current_state() -> CurrentState:
 
 def recover_to_expected(context: RecoveryContext) -> RecoveryResult:
     actions: list[str] = []
+    network_reconnect_attempts = 0
+    network_reconnect_limit = 5
     startup_deadline = (
         time.perf_counter() + context.startup_wait_timeout
         if _is_startup_context(context) else None
@@ -332,6 +406,20 @@ def recover_to_expected(context: RecoveryContext) -> RecoveryResult:
         if device_state.STOP:
             raise StopExecution()
         recog = Recognizer()
+        if _is_network_unavailable_dialog(recog.ocr()):
+            network_reconnect_attempts += 1
+            if network_reconnect_attempts > network_reconnect_limit:
+                return _abort_for_network_outage(context, attempt, actions)
+            logger.warning(
+                f"网络不佳，尝试重新连接 ({network_reconnect_attempts}/{network_reconnect_limit})"
+            )
+            handle_startup_interruption(recog)
+            actions.append("network_reconnect")
+            # Confirmation may transition to the random "正在…" loading
+            # overlay.  Do not tap anything underneath; the next iteration
+            # re-detects either that overlay or a repeated reconnect dialog.
+            _interruptible_sleep(2.0)
+            continue
         if handle_startup_interruption(recog):
             actions.append("handle_startup_interruption")
             _interruptible_sleep(1.5)
@@ -353,12 +441,9 @@ def recover_to_expected(context: RecoveryContext) -> RecoveryResult:
             continue
 
         if state.scene == Scene.LOGIN:
-            recog = Recognizer()
-            _confirm_update_if_needed(recog)
-            _tap_login(recog)
-            actions.append("tap_login")
             login_timeout = 45.0 if _is_startup_context(context) else 10.0
-            _wait_scene_leave(Scene.LOGIN, timeout=login_timeout)
+            actions.append("tap_login_until_scene_changes")
+            _tap_login_until_scene_changes(timeout=login_timeout)
             continue
 
         if state.scene in (Scene.LOADING, Scene.TRANSIT, Scene.CONNECTING) or state.scene in WAITING_SCENES:
