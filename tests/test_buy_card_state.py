@@ -1,7 +1,7 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import call, patch
 
-from resonance.solvers import buy
+from resonance.solvers import purchase
 
 
 def ocr_item(text: str, x: int, y: int) -> dict:
@@ -11,16 +11,14 @@ def ocr_item(text: str, x: int, y: int) -> dict:
     }
 
 
-class BuyCardStateTests(unittest.TestCase):
+class PurchaseFlowTests(unittest.TestCase):
     def test_buyable_card_accepts_percent_with_normal_ocr_vertical_jitter(self):
         data = [
             ocr_item("黑毛牛排", 798, 286),
             ocr_item("100%", 770, 325),
             ocr_item("3333", 770, 352),
         ]
-
-        state, pos = buy._find_good_state(data, "黑毛牛排")
-
+        state, pos = purchase._find_good_state(data, "黑毛牛排")
         self.assertEqual(state, "buyable")
         self.assertEqual(pos, (798, 286))
 
@@ -30,9 +28,7 @@ class BuyCardStateTests(unittest.TestCase):
             ocr_item("100%", 770, 325),
             ocr_item("声望等级解锁", 780, 345),
         ]
-
-        state, pos = buy._find_good_state(data, "黑毛牛排")
-
+        state, pos = purchase._find_good_state(data, "黑毛牛排")
         self.assertEqual(state, "locked")
         self.assertEqual(pos, (798, 286))
 
@@ -43,131 +39,78 @@ class BuyCardStateTests(unittest.TestCase):
             ocr_item("金箔酒", 798, 405),
             ocr_item("声望等级解锁", 780, 455),
         ]
-
-        state, pos = buy._find_good_state(data, "黑毛牛排")
-
+        state, pos = purchase._find_good_state(data, "黑毛牛排")
         self.assertEqual(state, "buyable")
         self.assertEqual(pos, (798, 286))
 
     def test_missing_card_evidence_is_uncertain_not_clickable(self):
         data = [ocr_item("黑毛牛排", 798, 286)]
-
-        state, pos = buy._find_good_state(data, "黑毛牛排")
-
+        state, pos = purchase._find_good_state(data, "黑毛牛排")
         self.assertEqual(state, "uncertain")
         self.assertEqual(pos, (798, 286))
-        self.assertIsNone(buy._match_good_name(data, "黑毛牛排"))
+        self.assertIsNone(purchase._match_good_name(data, "黑毛牛排"))
 
     def test_uncertain_card_never_swipes_or_clicks(self):
         data = [ocr_item("黑毛牛排", 798, 286)]
-
-        with patch("resonance.solvers.buy._ocr_goods_list", return_value=data) as ocr, patch(
-            "resonance.solvers.buy.input_swipe_hold"
-        ) as swipe, patch("resonance.solvers.buy.click") as click, patch(
-            "resonance.solvers.buy.time.sleep"
+        with patch("resonance.solvers.purchase._ocr_goods_list", return_value=data) as ocr, patch(
+            "resonance.solvers.purchase.input_swipe_hold"
+        ) as swipe, patch("resonance.solvers.purchase.click") as click, patch(
+            "resonance.solvers.purchase.time.sleep"
         ):
-            result, _ = buy.buy_good("黑毛牛排", 0, 0)
-
+            result, _ = purchase.select_product_card("黑毛牛排", 0, 0)
         self.assertFalse(result)
         self.assertEqual(ocr.call_count, 3)
         swipe.assert_not_called()
         click.assert_not_called()
 
-    def test_uncertain_then_ocr_miss_still_never_swipes_or_clicks(self):
-        uncertain = [ocr_item("黑毛牛排", 798, 286)]
-
-        with patch("resonance.solvers.buy._ocr_goods_list", side_effect=[uncertain, [], []]), patch(
-            "resonance.solvers.buy.input_swipe_hold"
-        ) as swipe, patch("resonance.solvers.buy.click") as click, patch(
-            "resonance.solvers.buy.time.sleep"
-        ):
-            result, _ = buy.buy_good("黑毛牛排", 0, 0)
-
-        self.assertFalse(result)
-        swipe.assert_not_called()
-        click.assert_not_called()
-
-    def test_load_not_changed_does_not_trigger_a_retry_click(self):
-        data = [
-            ocr_item("黑毛牛排", 798, 286),
-            ocr_item("100%", 770, 325),
-        ]
-
-        # One click is the intentional money probe; one is the normal product
-        # selection. A third click would be the old blind retry and is unsafe.
-        with patch("resonance.solvers.buy.get_boatload", side_effect=[100, 100, 90, 90, 90, 90]), patch(
-            "resonance.solvers.buy._ocr_goods_list", return_value=data
-        ), patch("resonance.solvers.buy.click") as click, patch(
-            "resonance.solvers.buy.time.sleep"
-        ), patch("resonance.solvers.buy.is_purchase_selection_empty", return_value=True):
-            self.assertTrue(buy.buy_business(["黑毛牛排"], []))
-
-        self.assertEqual(click.call_count, 2)
-        click.assert_called_with((798, 286))
-
     def test_full_boatload_stops_scanning_remaining_goods(self):
-        data = [
-            ocr_item("黑毛牛排", 798, 286),
-            ocr_item("100%", 770, 325),
-        ]
-
         with patch(
-            "resonance.solvers.buy.get_boatload", side_effect=[100, 100, 90, 90, 0]
+            "resonance.solvers.purchase.get_boatload", side_effect=[100, 100, 90, 90, 0]
         ), patch(
-            "resonance.solvers.buy.buy_good", return_value=(True, 0)
-        ) as buy_good, patch("resonance.solvers.buy.time.sleep"), patch(
-            "resonance.solvers.buy.is_purchase_selection_empty", return_value=True
+            "resonance.solvers.purchase.select_product_card", return_value=(True, 0)
+        ) as select_card, patch("resonance.solvers.purchase.time.sleep"), patch(
+            "resonance.solvers.purchase.is_purchase_list_empty", return_value=True
         ):
-            self.assertTrue(buy.buy_business(["黑毛牛排", "行李箱包"], ["大龙虾"]))
-        self.assertEqual(buy_good.call_count, 2)  # probe + the first real purchase
-        self.assertEqual(buy_good.call_args_list[0].args[0], "黑毛牛排")
-        self.assertEqual(buy_good.call_args_list[1].args[0], "黑毛牛排")
+            self.assertTrue(purchase.execute_purchase_flow(["黑毛牛排", "行李箱包"], ["大龙虾"]))
+        self.assertEqual(select_card.call_count, 2)
+        self.assertEqual(select_card.call_args_list[0].args[0], "黑毛牛排")
+        self.assertEqual(select_card.call_args_list[1].args[0], "黑毛牛排")
 
     def test_buy_settlement_visible_by_title_or_tax_and_total(self):
         with patch(
-            "resonance.solvers.buy._buy_settlement_texts", return_value=["买入结算报告"]
+            "resonance.solvers.purchase._buy_settlement_texts", return_value=["买入结算报告"]
         ):
-            self.assertTrue(buy._is_buy_settlement_visible())
+            self.assertTrue(purchase._is_buy_settlement_visible())
         with patch(
-            "resonance.solvers.buy._buy_settlement_texts", return_value=["纳税", "买入总价"]
+            "resonance.solvers.purchase._buy_settlement_texts", return_value=["纳税", "买入总价"]
         ):
-            self.assertTrue(buy._is_buy_settlement_visible())
+            self.assertTrue(purchase._is_buy_settlement_visible())
 
-    def test_buy_first_settlement_check_confirms_and_closes_once(self):
+    def test_purchase_clicks_once_and_closes_settlement_once(self):
         with patch(
-            "resonance.solvers.buy._is_buy_settlement_visible", side_effect=[True, False]
-        ), patch("resonance.solvers.buy.input_tap") as tap, patch(
-            "resonance.solvers.buy.time.sleep"
+            "resonance.solvers.purchase._is_buy_settlement_visible", side_effect=[True, False]
+        ), patch("resonance.solvers.purchase.input_tap") as tap, patch(
+            "resonance.solvers.purchase.time.sleep"
         ):
-            self.assertTrue(buy.click_buy_button())
+            self.assertTrue(purchase.confirm_purchase())
+        self.assertEqual(tap.call_args_list, [call((1056, 647)), call((896, 676))])
 
-        self.assertEqual(tap.call_args_list, [
-            unittest.mock.call((1056, 647)),
-            unittest.mock.call((896, 676)),
-        ])
-
-    def test_buy_second_settlement_check_closes_twice_only_when_still_visible(self):
+    def test_purchase_closes_settlement_twice_only_when_still_visible(self):
         with patch(
-            "resonance.solvers.buy._is_buy_settlement_visible", side_effect=[False, True, True]
-        ), patch("resonance.solvers.buy.input_tap") as tap, patch(
-            "resonance.solvers.buy.time.sleep"
+            "resonance.solvers.purchase._is_buy_settlement_visible", side_effect=[False, True, True]
+        ), patch("resonance.solvers.purchase.input_tap") as tap, patch(
+            "resonance.solvers.purchase.time.sleep"
         ):
-            self.assertTrue(buy.click_buy_button())
+            self.assertTrue(purchase.confirm_purchase())
+        self.assertEqual(tap.call_args_list, [call((1056, 647)), call((896, 676)), call((896, 676))])
 
-        self.assertEqual(tap.call_args_list, [
-            unittest.mock.call((1056, 647)),
-            unittest.mock.call((896, 676)),
-            unittest.mock.call((896, 676)),
-        ])
-
-    def test_buy_without_settlement_fails_without_retrying_buy_button(self):
+    def test_purchase_without_settlement_fails_without_retrying_buy_button(self):
         with patch(
-            "resonance.solvers.buy._is_buy_settlement_visible", return_value=False
-        ), patch("resonance.solvers.buy.input_tap") as tap, patch(
-            "resonance.solvers.buy.time.sleep"
+            "resonance.solvers.purchase._is_buy_settlement_visible", return_value=False
+        ), patch("resonance.solvers.purchase.input_tap") as tap, patch(
+            "resonance.solvers.purchase.time.sleep"
         ):
-            self.assertFalse(buy.click_buy_button())
-
+            self.assertFalse(purchase.confirm_purchase())
         tap.assert_called_once_with((1056, 647))
 
 

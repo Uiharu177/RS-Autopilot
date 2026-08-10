@@ -9,7 +9,7 @@
 
 边界（不属于本模块）：
 - 场景检测 → resonance/scene/ 各 detect() + Recognizer 调度
-- 页面内操作 → resonance/solvers/ 下各自模块（buy.py / sell.py / exchange.py / city.py）
+- 页面内操作 → resonance/solvers/ 下各自模块（purchase.py / sale.py / exchange.py / city.py）
 - 跑商编排 → trade.py（组合多个 recover_to_expected + 业务操作）
 - 体力处理 → strength.py
 - 地图导航 → navigation.py
@@ -84,7 +84,7 @@ def _raw_adb_tap(pos: tuple[int, int]) -> bool:
         adb.device.shell(f"input tap {int(pos[0])} {int(pos[1])}")
         return True
     except Exception as e:
-        logger.warning(f"恢复流程：ADB直点失败: {e}")
+        logger.warning(f"[恢复] ADB 直接点击失败：error={e}")
         return False
     finally:
         adb.kill()
@@ -105,9 +105,9 @@ def _wait_scene_leave(scene: Scene, timeout: float = 8.0) -> bool:
         _interruptible_sleep(1.0)
         current = Recognizer().scene
         if current != scene:
-            logger.info(f"恢复流程：场景已离开 {scene.name} -> {current.name}")
+            logger.info(f"[恢复] 场景恢复完成：from={scene.name}, to={current.name}")
             return True
-    logger.warning(f"恢复流程：等待离开 {scene.name} 超时")
+    logger.warning(f"[恢复] 等待场景切换超时：scene={scene.name}")
     return False
 
 
@@ -138,7 +138,7 @@ def _tap_login_until_scene_changes(
                 _interruptible_sleep(1.0)
                 continue
             if recog.scene == Scene.LOADING:
-                logger.info("恢复流程：检测到网络/资源加载层，暂停登录点击")
+                logger.info("[恢复] 检测到网络或资源加载层，暂停登录输入")
                 next_tap = now + retry_interval
                 _interruptible_sleep(1.0)
                 continue
@@ -146,26 +146,26 @@ def _tap_login_until_scene_changes(
             taps += 1
             next_tap = now + retry_interval
             if taps > 1:
-                logger.info(f"恢复流程：登录页仍在，短周期重试点击 ({taps})")
+                logger.info(f"[恢复] 登录页仍存在，执行登录入口重试：attempt={taps}")
         _interruptible_sleep(min(1.0, max(0.0, deadline - time.perf_counter())))
         current = Recognizer().scene
         if current != Scene.LOGIN:
-            logger.info(f"恢复流程：登录页已离开 -> {current.name}")
+            logger.info(f"[恢复] 登录页已关闭：scene={current.name}")
             return True
-    logger.warning("恢复流程：登录页重试等待超时")
+    logger.warning("[恢复] 登录页重试超时，未确认页面切换")
     return False
 
 
 def _short_wait_scene_change(current: Scene, timeout: float = 60.0, interval: float = 1.0) -> bool:
-    logger.info(f"恢复流程：短等场景 {current.name} 恢复 (超时={timeout}s)")
+    logger.info(f"[恢复] 等待临时场景恢复：scene={current.name}, timeout={timeout}s")
     start = time.perf_counter()
     while time.perf_counter() - start < timeout:
         _interruptible_sleep(interval)
         new_scene = Recognizer().scene
         if new_scene != current and new_scene not in (Scene.TRANSIT, Scene.LOADING, Scene.CONNECTING):
-            logger.info(f"恢复流程：短等恢复完成 {current.name} -> {new_scene.name}")
+            logger.info(f"[恢复] 临时场景恢复完成：from={current.name}, to={new_scene.name}")
             return True
-    logger.warning(f"恢复流程：短等场景 {current.name} 超时")
+    logger.warning(f"[恢复] 临时场景恢复超时：scene={current.name}")
     return False
 
 
@@ -181,11 +181,11 @@ def _tap_login(recog: Recognizer) -> bool:
             pos = _ocr_center(item)
             if not _raw_adb_tap(pos):
                 input_tap(pos)
-            logger.info("恢复流程：点击登录入口")
+            logger.info("[恢复] 已识别登录入口，执行点击")
             return True
     if not _raw_adb_tap((640, 360)):
         input_tap((640, 360))
-    logger.info("恢复流程：未定位登录文字，点击屏幕中心")
+    logger.info("[恢复] 未识别登录入口文字，使用默认登录位置")
     return True
 
 
@@ -196,10 +196,10 @@ def _confirm_update_if_needed(recog: Recognizer) -> bool:
     for item in results:
         if "确认" in item["text"] or "确定" in item["text"]:
             input_tap(_ocr_center(item))
-            logger.info("恢复流程：确认资源更新")
+            logger.info("[恢复] 已识别资源更新确认入口，执行点击")
             return True
     input_tap((666, 505))
-    logger.info("恢复流程：点击默认资源更新确认位置")
+    logger.info("[恢复] 未识别资源更新确认入口，使用默认确认位置")
     return True
 
 
@@ -226,10 +226,10 @@ def _is_network_unavailable_dialog(results: list) -> bool:
 def _abort_for_network_outage(context: RecoveryContext, attempts: int, actions: list[str]) -> RecoveryResult:
     """End the active task and close the game after persistent network failure."""
     snapshot = capture_debug_snapshot(reason=f"{context.step}:network_reconnect_exhausted")
-    logger.error("网络重连连续失败 5 次，停止任务并关闭游戏")
+    logger.error("[恢复] 网络重连连续失败，停止任务并关闭游戏：attempts=5")
     stop_result = stop_game()
     if not stop_result.get("success"):
-        logger.error(f"网络故障终止时关闭游戏失败: {stop_result.get('error', 'unknown error')}")
+        logger.error(f"[恢复] 网络故障处置时关闭游戏失败：error={stop_result.get('error', 'unknown error')}")
     device_state.STOP = True
     actions.append("stop_game_after_network_reconnect_exhausted")
     return RecoveryResult(
@@ -251,7 +251,7 @@ def handle_startup_interruption(recog: Recognizer) -> bool:
     for item in results:
         if "护卫队迎击" in item["text"]:
             input_tap(_ocr_center(item))
-            logger.info("恢复流程：重启后点击护卫队迎击")
+            logger.info("[恢复] 重启后已识别护卫队迎击入口，执行点击")
             return True
 
     # This dialog is commonly OCR'd as one exact line, but it may also be
@@ -261,11 +261,11 @@ def handle_startup_interruption(recog: Recognizer) -> bool:
         for item in results:
             if any(keyword in item["text"] for keyword in ("重新连接", "重试", "确定", "确认")):
                 input_tap(_ocr_center(item))
-                logger.info("恢复流程：网络不佳，点击重新连接")
+                logger.info("[恢复] 已识别网络重连入口，执行点击")
                 return True
         # OCR can miss the button while still recognizing the dialog text.
         input_tap((640, 505))
-        logger.info("恢复流程：网络不佳，点击默认重新连接位置")
+        logger.info("[恢复] 网络重连入口未识别，使用默认重连位置")
         return True
 
     has_update = any(
@@ -278,14 +278,14 @@ def handle_startup_interruption(recog: Recognizer) -> bool:
         if _tap_text(results, ("确认", "确定"), "恢复流程：确认资源更新"):
             return True
         input_tap((666, 505))
-        logger.info("恢复流程：资源更新未定位按钮，点击默认确认位置")
+        logger.info("[恢复] 资源更新确认入口未识别，使用默认确认位置")
         return True
 
     has_blank_tap = any("触碰空白区域退出" in item["text"] for item in results)
     if has_blank_tap:
         if not _raw_adb_tap((100, 100)):
             input_tap((100, 100))
-        logger.info("恢复流程：点击空白区域关闭公告弹窗")
+        logger.info("[恢复] 公告弹窗已识别，点击空白区域关闭")
         return True
 
     has_news = any(
@@ -303,7 +303,7 @@ def handle_startup_interruption(recog: Recognizer) -> bool:
         ):
             return True
         input_tap((1200, 80))
-        logger.info("恢复流程：启动公告未定位按钮，点击右上角关闭位置")
+        logger.info("[恢复] 启动公告关闭入口未识别，使用右上角默认关闭位置")
         return True
 
     return False
@@ -321,10 +321,10 @@ def click_arrive_city() -> bool:
                 continue
             device = get_device()
             device.input_tap(int(device.ratio * center_x), int(device.ratio * center_y))
-            logger.info("恢复流程：精确点击右侧访问城市入口")
+            logger.info("[恢复] 已定位右侧城市入口，执行点击")
             time.sleep(2.0)
             return True
-    logger.info("恢复流程：未定位右下访问城市入口")
+    logger.info("[恢复] 未定位右下城市入口")
     return False
 
 
@@ -346,9 +346,9 @@ def identify_city(assume_ready: bool = False) -> Optional[str]:
         results = predict(frame, cropped_pos1=pos1, cropped_pos2=pos2)
         city = _pick_city_name(results)
         if city:
-            logger.info(f"恢复流程：当前站点 {city}")
+            logger.info(f"[恢复] 当前城市已识别：city={city}")
             return city
-    logger.warning("恢复流程：未识别到当前城市")
+    logger.warning("[恢复] 当前城市识别失败")
     return None
 
 
@@ -377,7 +377,7 @@ def close_station_list(max_attempts: int = 4) -> bool:
             return True
         if scene != Scene.STATION_LIST:
             return False
-        logger.info(f"恢复流程：关闭站点/地图列表 ({attempt}/{max_attempts})")
+        logger.info(f"[恢复] 关闭站点或地图列表：attempt={attempt}/{max_attempts}")
         input_tap((83, 36))
         time.sleep(0.8)
         if attempt % 2 == 0:
@@ -558,7 +558,7 @@ def takeover_to_station(allow_travel: bool = True) -> Optional[str]:
             return city
         fallback = app.RunBuy.BuyCity or app.RunBuy.SellCity
         if fallback:
-            logger.warning(f"城市识别失败，使用备用城市: {fallback}")
+            logger.warning(f"[恢复] 城市识别失败，使用备用城市：city={fallback}")
             return fallback
     return None
 
@@ -576,13 +576,13 @@ def wait_or_recover_travel(target_city: str, current_city: Optional[str] = None)
 
     city = takeover_to_station(allow_travel=True)
     if city == target_city:
-        logger.info(f"恢复流程：已在目标城市 {target_city}")
+        logger.info(f"[恢复] 已位于目标城市：city={target_city}")
         return True
     if not city:
-        logger.error("恢复流程：行车恢复后无法识别城市")
+        logger.error("[恢复] 行车恢复后城市识别失败")
         return False
 
-    logger.info(f"恢复流程：当前 {city}，重新前往 {target_city}")
+    logger.info(f"[恢复] 当前城市与目标不一致，重新导航：source={city}, target={target_city}")
     result = click_station(target_city, cur_station=city or current_city)
     if not result.ok:
         return False
@@ -607,7 +607,7 @@ def skip_travel_by_returning_main(target_city: str) -> bool:
         )
     )
     if not result.ok:
-        logger.error(f"跳过跑车回主界面失败: target={target_city}, reason={result.reason}")
+        logger.error(f"[恢复] 返回主界面失败：target={target_city}, reason={result.reason}")
         return False
-    logger.info(f"跳过跑车：已回主界面，视为到达 {target_city}")
+    logger.info(f"[恢复] 已返回主界面，视为到达目标城市：city={target_city}")
     return True

@@ -1,10 +1,12 @@
-"""交易所进出与买卖工作流：进出交易所、切换买卖标签页、查找门店、交易流程。
+"""交易所页面操作：定位门店、进入交易所、切换买卖页签与离开交易所。
 
   包括：
     - 进入/退出交易所 (enter_exchange / leave_exchange)
     - 在城市门店页定位并点击门店图标 (find_outlet)
-    - 完整卖货流程 (sell_goods：全选→抬价→确认)
-    - 完整买货流程 (buy_goods：委托 buy.buy_business)
+    - 交易所入口页与买卖页的安全区分
+    - 门店定位、缓存验证与页签切换
+
+  不包含：商品选择、买卖议价、买卖确认和结算页关闭；分别由 purchase.py 与 sale.py 负责。
   不包含：体力检测（由调用方在进入交易所前后自行调用 strength.check_shop_strength）
 """
 import time
@@ -15,8 +17,6 @@ from loguru import logger
 from resonance.device.adb import ADB
 from resonance.device.device import get_device, input_swipe, input_tap, screenshot, screenshot_image
 from resonance.model import app
-from resonance.solvers.buy import buy_business
-from resonance.solvers.sell import click_bargain_button as _sell_bargain
 from resonance.vision.color import BGR
 from resonance.vision.ocr import predict
 from resonance.preset.control import blurry_ocr_click, ocr_click, wait_gbr
@@ -114,13 +114,13 @@ def _try_cached_outlet(city: Optional[str], name: str) -> bool:
     pos = OUTLET_TAP_CACHE.get((city, name))
     if pos is None:
         return False
-    logger.info(f"交易所缓存尝试: city={city}, pos={pos}")
+    logger.info(f"[交易所] 使用缓存定位点：city={city}, pos={pos}")
     input_tap(pos)
     if _wait_exchange_open(timeout=1.5):
-        logger.info(f"交易所缓存验证成功: city={city}")
+        logger.info(f"[交易所] 缓存验证成功：city={city}")
         return True
     OUTLET_TAP_CACHE.pop((city, name), None)
-    logger.info(f"交易所缓存失效，回退动态OCR: city={city}")
+    logger.info(f"[交易所] 缓存验证失败，改用动态 OCR 定位：city={city}")
     return False
 
 
@@ -131,7 +131,7 @@ def _switch_exchange_tab(tab: Literal["buy", "sell"]) -> bool:
 
     other_tab: Literal["buy", "sell"] = "sell" if tab == "buy" else "buy"
     if _is_exchange_tab(other_tab, texts):
-        logger.info(f"交易所{other_tab}页：点击底部{tab}页签")
+        logger.info(f"[交易所] 当前为{'卖出' if other_tab == 'sell' else '买入'}页，切换至{'买入' if tab == 'buy' else '卖出'}页签")
         input_tap(_EXCHANGE_TAB_POS[tab])
         time.sleep(1.0)
         # A verified trade page must never fall back to a landing-page click.
@@ -144,7 +144,7 @@ def _switch_exchange_tab(tab: Literal["buy", "sell"]) -> bool:
     # not the trade-tab page, so the bottom buy/sell tab coordinates must not
     # be used here.  A following tab-specific OCR check is still required.
     entry_pos = _EXCHANGE_ENTRY_POS[tab]
-    logger.info(f"交易所入口页：点击我要{'买' if tab == 'buy' else '卖'}")
+    logger.info(f"[交易所] 入口页已识别，选择{'买入' if tab == 'buy' else '卖出'}入口")
     input_tap(entry_pos)
     time.sleep(1.0)
     return _is_exchange_tab(tab, _current_exchange_texts())
@@ -177,12 +177,13 @@ def _wait_exchange_ocr_click(
             center_x = int((x1 + x2) / 2)
             center_y = int((position[0][1] + position[2][1]) / 2)
             pos = (center_x, center_y + 35)
-            logger.info(f"交易所OCR稳定命中: 交易所 (原始识别={text})")
+            logger.info(f"[交易所] 动态 OCR 已定位门店，执行点击：name=交易所, pos={pos}")
+            logger.debug(f"[交易所] 门店 OCR 原始文本：ocr={text}")
             get_device().input_tap(pos[0], pos[1])
             if _wait_exchange_open():
                 if cache_key is not None:
                     OUTLET_TAP_CACHE[cache_key] = pos
-                    logger.info(f"交易所缓存已记录: city={cache_key[0]}, pos={pos}")
+                    logger.info(f"[交易所] 缓存定位点已记录：city={cache_key[0]}, pos={pos}")
                 return True
         time.sleep(0.25)
     return False
@@ -192,20 +193,20 @@ def _tap_shoggolith_exchange_fixed(city: Optional[str]) -> bool:
     if city != "修格里城":
         return False
     pos = (1030, 342)
-    logger.info(f"交易所固定点: {pos}")
+    logger.info(f"[交易所] 使用固定定位点：pos={pos}")
     get_device().input_tap(pos[0], pos[1])
     time.sleep(1.0)
     return _is_exchange_opened(_current_exchange_texts())
 
 
 def _enter_shoggolith_exchange_fixed() -> bool:
-    logger.info("交易所固定点")
+    logger.info("[交易所] 启用修格里城固定定位流程")
     adb = ADB()
     try:
         if not adb.connect(app.Global.device.port):
-            logger.error("修格里城交易所固定流程: ADB连接失败")
+            logger.error("[交易所] 修格里城固定定位失败，ADB 连接失败")
             return False
-        logger.info("修格里城交易所固定流程: tap 1030 342")
+        logger.info("[交易所] 使用修格里城固定定位点：pos=(1030, 342)")
         adb.device.shell("input tap 1030 342")
         time.sleep(1.0)
         if Recognizer().scene in (Scene.EXCHANGE, Scene.EXCHANGE_BUY, Scene.EXCHANGE_SELL):
@@ -232,7 +233,7 @@ def find_outlet(name: str) -> bool:
             scene = recog.scene
             ocr_results = recog.ocr()
         city = _pick_city_name(ocr_results)
-        logger.info(f"前往 => {name}")
+        logger.info(f"[导航] 进入地点：name={name}")
         cache_key = (city, name) if city else None
         if _try_cached_outlet(city, name):
             return True
@@ -244,7 +245,7 @@ def find_outlet(name: str) -> bool:
             return True
         if city == "修格里城":
             return _enter_shoggolith_exchange_fixed()
-        logger.error(f"未找到门店: {name}")
+        logger.error(f"[交易所] 门店定位失败：name={name}")
         return False
 
     def _ocr_click_outlet(text: str, log: bool = False):
@@ -267,7 +268,7 @@ def find_outlet(name: str) -> bool:
 
     if not enter_city_view():
         return False
-    logger.info(f"前往 => {name}")
+    logger.info(f"[导航] 进入地点：name={name}")
 
     if result := _try_ocr_click():
         return result
@@ -289,7 +290,7 @@ def find_outlet(name: str) -> bool:
         if result := _try_ocr_click(log=(idx == len(swipe_paths) - 1)):
             return result
 
-    logger.error(f"未找到门店: {name}")
+    logger.error(f"[交易所] 门店定位失败：name={name}")
     return False
 
 
@@ -326,9 +327,9 @@ def enter_exchange(tab: Literal["buy", "sell"] = "buy") -> bool:
     if not is_join:
         texts = _current_exchange_texts()
         if not _is_exchange_opened(texts):
-            logger.error("进入交易所失败")
+            logger.error("[交易所] 页面进入失败，未识别交易所页面标记")
             return False
-        logger.info(f"交易所: 标题颜色未命中，根据页面标记继续")
+        logger.info("[交易所] 标题特征未命中，页面专属标记验证通过")
 
     if _switch_exchange_tab(tab):
         return True
@@ -337,10 +338,10 @@ def enter_exchange(tab: Literal["buy", "sell"] = "buy") -> bool:
     if _is_exchange_opened(texts):
         if _switch_exchange_tab(tab):
             return True
-        logger.error(f"交易所已打开，但未能确认{tab}页签")
+        logger.error(f"[交易所] 页面已打开但页签验证失败：target_tab={tab}")
         return False
 
-    logger.error("进入交易所失败")
+    logger.error("[交易所] 页面进入失败，未确认交易所状态")
     return False
 
 
@@ -351,166 +352,3 @@ def leave_exchange():
         input_tap((83, 36))
         time.sleep(0.5)
     return screenshot().match_template(RESOURCES_PATH / "scene/main_map.png", 0.96)
-
-
-# ========================================================================
-# Sell workflow
-# ========================================================================
-
-
-_SELL_CARGO_LOAD_REGION = ((1120, 370), (1255, 425))
-_SELL_SETTLEMENT_REGION = ((100, 480), (1180, 610))
-_SELL_RESULT_NOTICE_REGION = ((450, 320), (800, 395))
-_SELL_PAGE_MARKER_REGION = ((850, 80), (1250, 130))
-
-
-def _read_sell_cargo_load() -> Optional[int]:
-    """Read the current value from the sell-page 载货量 current/capacity label."""
-    results = predict(
-        screenshot_image(),
-        cropped_pos1=_SELL_CARGO_LOAD_REGION[0],
-        cropped_pos2=_SELL_CARGO_LOAD_REGION[1],
-    )
-    text = "".join(str(item.get("text", "")).replace(" ", "") for item in results)
-    for index, char in enumerate(text):
-        if char != "/":
-            continue
-        left = text[:index]
-        digits = "".join(char for char in reversed(left) if char.isdigit())
-        if digits:
-            value = int(digits[::-1])
-            logger.debug(f"[卖货] 载货量识别: {value} ({text})")
-            return value
-    logger.error(f"[卖货] 载货量OCR失败: {text or 'empty'}")
-    return None
-
-
-def _select_all() -> None:
-    """Click the sell-all control exactly once after cargo OCR confirms goods."""
-    logger.debug("出售全部货物")
-    input_tap((1187, 103))
-    time.sleep(0.3)
-
-
-def _bargain_sell(num: int = 0) -> bool:
-    return _sell_bargain(num)
-
-
-def _ocr_texts_in_region(region: Tuple[Tuple[int, int], Tuple[int, int]]) -> List[str]:
-    results = predict(
-        screenshot_image(),
-        cropped_pos1=region[0],
-        cropped_pos2=region[1],
-    )
-    return [str(item.get("text", "")) for item in results]
-
-
-def _is_sell_settlement_visible() -> bool:
-    """Recognize the post-sale settlement panel using only its body region.
-
-    The full title is the primary proof.  The paired labels allow for a title
-    OCR miss without treating generic exchange-page text as a settlement.
-    """
-    texts = _ocr_texts_in_region(_SELL_SETTLEMENT_REGION)
-    if any("卖出结算报告" in text for text in texts):
-        return True
-    has_profit = any("总利润" in text for text in texts)
-    has_tax = any("纳税" in text or "税额" in text for text in texts)
-    return has_profit and has_tax
-
-
-def _is_sell_page_still_visible() -> bool:
-    """Check the sell-tab header locally after settlement detection misses."""
-    texts = _ocr_texts_in_region(_SELL_PAGE_MARKER_REGION)
-    return _is_exchange_tab("sell", texts)
-
-
-def _has_no_sellable_goods_notice() -> bool:
-    texts = _ocr_texts_in_region(_SELL_RESULT_NOTICE_REGION)
-    return any("请选择要出售的交易品" in text for text in texts)
-
-
-def _close_sell_settlement() -> None:
-    """Dismiss a confirmed settlement panel without leaving the exchange.
-
-    The second blank-area tap is reserved for a panel still visible after the
-    first dismiss action, avoiding an unnecessary fixed-coordinate input.
-    """
-    input_tap((896, 676))
-    time.sleep(0.5)
-    if _is_sell_settlement_visible():
-        input_tap((896, 676))
-
-
-def _confirm_sell(before_load: int) -> bool:
-    input_tap((1056, 647))
-
-    # A successful sale transitions to a separate settlement panel, where the
-    # sell-page cargo label no longer exists.  Verify that panel first, using
-    # only two bounded OCR reads of its body region.
-    for wait_seconds in (1.1, 0.9):
-        time.sleep(wait_seconds)
-        if _is_sell_settlement_visible():
-            logger.info("[卖货] 检测到卖出结算报告，出售成功")
-            _close_sell_settlement()
-            return True
-
-    if not _is_sell_page_still_visible():
-        logger.error("[卖货] 未检测到结算页，且当前不在卖货页，无法确认出售成功")
-        return False
-
-    if _has_no_sellable_goods_notice():
-        logger.info("[卖货] 出售全部未选中可卖交易品，本城市无可出售交易品")
-        return True
-
-    after_load = _read_sell_cargo_load()
-    if after_load is None:
-        logger.error("[卖货] 仍在卖货页但载货量OCR失败，无法确认出售成功")
-        return False
-    if after_load >= before_load:
-        logger.error("[卖货] 出售后载货量未变化，无法确认出售成功")
-        return False
-
-    logger.info(f"[卖货] 载货量变化：{before_load} -> {after_load}，等待结算报告")
-    time.sleep(0.6)
-    if _is_sell_settlement_visible():
-        _close_sell_settlement()
-        return True
-    logger.error("[卖货] 载货量已变化但未检测到结算页，安全停止")
-    return False
-
-
-def sell_goods(haggle: int = 0) -> bool:
-    if not _is_sell_page_ready():
-        logger.error("卖货前页面验证失败，拒绝点击固定坐标以避免误触")
-        return False
-
-    before_load = _read_sell_cargo_load()
-    if before_load is None:
-        logger.error("[卖货] 卖货前载货量OCR失败，拒绝执行卖货控件")
-        return False
-    if before_load == 0:
-        logger.info("[卖货] 车厢为空，无需清货")
-        return True
-    _select_all()
-    if not _bargain_sell(haggle):
-        logger.error("出售货物失败：议价流程未完成")
-        return False
-    if not _confirm_sell(before_load):
-        logger.error("出售货物失败：已选中货物，但出售确认未完成")
-        return False
-    return True
-
-
-# ========================================================================
-# Buy workflow
-# ========================================================================
-
-
-def buy_goods(
-    primary_goods: List[str],
-    secondary_goods: List[str],
-    haggle: int = 0,
-    book: int = 0,
-):
-    return buy_business(primary_goods, secondary_goods, haggle, max_book=book)
