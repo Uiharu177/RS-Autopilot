@@ -7,7 +7,6 @@
     - 完整买货流程 (buy_goods：委托 buy.buy_business)
   不包含：体力检测（由调用方在进入交易所前后自行调用 strength.check_shop_strength）
 """
-import re
 import time
 from typing import List, Literal, Optional, Tuple
 
@@ -17,10 +16,7 @@ from resonance.device.adb import ADB
 from resonance.device.device import get_device, input_swipe, input_tap, screenshot, screenshot_image
 from resonance.model import app
 from resonance.solvers.buy import buy_business
-from resonance.solvers.sell import (
-    is_empty_goods as _sell_goods_empty,
-    click_bargain_button as _sell_bargain,
-)
+from resonance.solvers.sell import click_bargain_button as _sell_bargain
 from resonance.vision.color import BGR
 from resonance.vision.ocr import predict
 from resonance.preset.control import blurry_ocr_click, ocr_click, wait_gbr
@@ -40,6 +36,8 @@ from resonance.utils.utils import RESOURCES_PATH
 
 OUTLET_TAP_CACHE: dict[Tuple[str, str], Tuple[int, int]] = {}
 EXCHANGE_OCR_KEYWORD = "交易所"
+_EXCHANGE_TAB_POS = {"buy": (120, 670), "sell": (335, 670)}
+_EXCHANGE_ENTRY_POS = {"buy": (960, 321), "sell": (960, 405)}
 
 
 def _current_exchange_texts() -> List[str]:
@@ -57,7 +55,10 @@ def _is_exchange_entry(texts: List[str]) -> bool:
     """Return whether the exchange landing page, not a trade tab, is open."""
     has_exchange_title = any("交易所" in text for text in texts)
     has_entry_action = any("我要买" in text or "我要卖" in text for text in texts)
-    return has_exchange_title and has_entry_action
+    # The bottom buy/sell tabs are also visible on real trade pages.  Their
+    # tab-specific OCR markers must therefore take precedence over entry text.
+    has_trade_tab = _is_exchange_tab("buy", texts) or _is_exchange_tab("sell", texts)
+    return has_exchange_title and has_entry_action and not has_trade_tab
 
 
 def _is_exchange_tab(tab: Literal["buy", "sell"], texts: List[str]) -> bool:
@@ -128,13 +129,21 @@ def _switch_exchange_tab(tab: Literal["buy", "sell"]) -> bool:
     if _is_exchange_tab(tab, texts):
         return True
 
+    other_tab: Literal["buy", "sell"] = "sell" if tab == "buy" else "buy"
+    if _is_exchange_tab(other_tab, texts):
+        logger.info(f"交易所{other_tab}页：点击底部{tab}页签")
+        input_tap(_EXCHANGE_TAB_POS[tab])
+        time.sleep(1.0)
+        # A verified trade page must never fall back to a landing-page click.
+        return _is_exchange_tab(tab, _current_exchange_texts())
+
     if not _is_exchange_entry(texts):
         return False
 
     # The exchange landing page has large "我要买 / 我要卖" buttons.  It is
     # not the trade-tab page, so the bottom buy/sell tab coordinates must not
     # be used here.  A following tab-specific OCR check is still required.
-    entry_pos = (960, 321) if tab == "buy" else (960, 405)
+    entry_pos = _EXCHANGE_ENTRY_POS[tab]
     logger.info(f"交易所入口页：点击我要{'买' if tab == 'buy' else '卖'}")
     input_tap(entry_pos)
     time.sleep(1.0)
@@ -349,44 +358,125 @@ def leave_exchange():
 # ========================================================================
 
 
-def _select_all() -> Optional[bool]:
-    start = time.perf_counter()
-    while time.perf_counter() - start < 15:
-        image = screenshot()
-        bgr = image.get_bgr((1156, 100))
-        logger.debug(f"是否出售货物颜色检查 {bgr}")
-        if not (bgr.b == 0 and bgr.g == 0 and 90 <= bgr.r <= 100):
-            logger.debug("出售全部货物")
-            input_tap((1187, 103))
-            time.sleep(0.5)
-            break
-    if _sell_goods_empty():
-        logger.info("车厢为空，无需清货")
-        return None
-    return True
+_SELL_CARGO_LOAD_REGION = ((1120, 370), (1255, 425))
+_SELL_SETTLEMENT_REGION = ((100, 480), (1180, 610))
+_SELL_RESULT_NOTICE_REGION = ((450, 320), (800, 395))
+_SELL_PAGE_MARKER_REGION = ((850, 80), (1250, 130))
+
+
+def _read_sell_cargo_load() -> Optional[int]:
+    """Read the current value from the sell-page 载货量 current/capacity label."""
+    results = predict(
+        screenshot_image(),
+        cropped_pos1=_SELL_CARGO_LOAD_REGION[0],
+        cropped_pos2=_SELL_CARGO_LOAD_REGION[1],
+    )
+    text = "".join(str(item.get("text", "")).replace(" ", "") for item in results)
+    for index, char in enumerate(text):
+        if char != "/":
+            continue
+        left = text[:index]
+        digits = "".join(char for char in reversed(left) if char.isdigit())
+        if digits:
+            value = int(digits[::-1])
+            logger.debug(f"[卖货] 载货量识别: {value} ({text})")
+            return value
+    logger.error(f"[卖货] 载货量OCR失败: {text or 'empty'}")
+    return None
+
+
+def _select_all() -> None:
+    """Click the sell-all control exactly once after cargo OCR confirms goods."""
+    logger.debug("出售全部货物")
+    input_tap((1187, 103))
+    time.sleep(0.3)
 
 
 def _bargain_sell(num: int = 0) -> bool:
     return _sell_bargain(num)
 
 
-def _confirm_sell() -> bool:
-    for _ in range(3):
-        input_tap((1056, 647))
-        time.sleep(0.8)
-        bgr = screenshot().get_bgr((1175, 470), offset=5)
-        logger.debug(f"卖出按钮点击后颜色检查: {bgr}")
-        if bgr == [227, 131, 82]:
-            logger.info("检测到包含本地商品提示，确认继续")
-            input_tap((975, 498))
-            time.sleep(0.5)
-            continue
-        if not (
-            BGR(0, 170, 240) <= bgr <= BGR(5, 185, 255)
-            or bgr == [227, 131, 82]
-            or bgr == [251, 253, 253]
-        ):
+def _ocr_texts_in_region(region: Tuple[Tuple[int, int], Tuple[int, int]]) -> List[str]:
+    results = predict(
+        screenshot_image(),
+        cropped_pos1=region[0],
+        cropped_pos2=region[1],
+    )
+    return [str(item.get("text", "")) for item in results]
+
+
+def _is_sell_settlement_visible() -> bool:
+    """Recognize the post-sale settlement panel using only its body region.
+
+    The full title is the primary proof.  The paired labels allow for a title
+    OCR miss without treating generic exchange-page text as a settlement.
+    """
+    texts = _ocr_texts_in_region(_SELL_SETTLEMENT_REGION)
+    if any("卖出结算报告" in text for text in texts):
+        return True
+    has_profit = any("总利润" in text for text in texts)
+    has_tax = any("纳税" in text or "税额" in text for text in texts)
+    return has_profit and has_tax
+
+
+def _is_sell_page_still_visible() -> bool:
+    """Check the sell-tab header locally after settlement detection misses."""
+    texts = _ocr_texts_in_region(_SELL_PAGE_MARKER_REGION)
+    return _is_exchange_tab("sell", texts)
+
+
+def _has_no_sellable_goods_notice() -> bool:
+    texts = _ocr_texts_in_region(_SELL_RESULT_NOTICE_REGION)
+    return any("请选择要出售的交易品" in text for text in texts)
+
+
+def _close_sell_settlement() -> None:
+    """Dismiss a confirmed settlement panel without leaving the exchange.
+
+    The second blank-area tap is reserved for a panel still visible after the
+    first dismiss action, avoiding an unnecessary fixed-coordinate input.
+    """
+    input_tap((896, 676))
+    time.sleep(0.5)
+    if _is_sell_settlement_visible():
+        input_tap((896, 676))
+
+
+def _confirm_sell(before_load: int) -> bool:
+    input_tap((1056, 647))
+
+    # A successful sale transitions to a separate settlement panel, where the
+    # sell-page cargo label no longer exists.  Verify that panel first, using
+    # only two bounded OCR reads of its body region.
+    for wait_seconds in (1.1, 0.9):
+        time.sleep(wait_seconds)
+        if _is_sell_settlement_visible():
+            logger.info("[卖货] 检测到卖出结算报告，出售成功")
+            _close_sell_settlement()
             return True
+
+    if not _is_sell_page_still_visible():
+        logger.error("[卖货] 未检测到结算页，且当前不在卖货页，无法确认出售成功")
+        return False
+
+    if _has_no_sellable_goods_notice():
+        logger.info("[卖货] 出售全部未选中可卖交易品，本城市无可出售交易品")
+        return True
+
+    after_load = _read_sell_cargo_load()
+    if after_load is None:
+        logger.error("[卖货] 仍在卖货页但载货量OCR失败，无法确认出售成功")
+        return False
+    if after_load >= before_load:
+        logger.error("[卖货] 出售后载货量未变化，无法确认出售成功")
+        return False
+
+    logger.info(f"[卖货] 载货量变化：{before_load} -> {after_load}，等待结算报告")
+    time.sleep(0.6)
+    if _is_sell_settlement_visible():
+        _close_sell_settlement()
+        return True
+    logger.error("[卖货] 载货量已变化但未检测到结算页，安全停止")
     return False
 
 
@@ -395,23 +485,20 @@ def sell_goods(haggle: int = 0) -> bool:
         logger.error("卖货前页面验证失败，拒绝点击固定坐标以避免误触")
         return False
 
-    selection = _select_all()
-    if selection is None:
-        logger.info("无货物可卖，跳过卖货")
-        return True
-    if not selection:
-        logger.error("出售货物失败：无法完成全选")
+    before_load = _read_sell_cargo_load()
+    if before_load is None:
+        logger.error("[卖货] 卖货前载货量OCR失败，拒绝执行卖货控件")
         return False
+    if before_load == 0:
+        logger.info("[卖货] 车厢为空，无需清货")
+        return True
+    _select_all()
     if not _bargain_sell(haggle):
         logger.error("出售货物失败：议价流程未完成")
         return False
-    if not _confirm_sell():
+    if not _confirm_sell(before_load):
         logger.error("出售货物失败：已选中货物，但出售确认未完成")
         return False
-    time.sleep(0.5)
-    input_tap((896, 676))
-    time.sleep(0.5)
-    input_tap((896, 676))
     return True
 
 

@@ -145,11 +145,10 @@ def buy_business(
     if invalid_page:
         return False
     if not is_purchase_selection_empty():
-        click_bargain_button(num)
-        click_buy_button()
-        time.sleep(0.5)
-        input_tap((896, 676))
-        return True
+        if not click_bargain_button(num):
+            logger.error("购买物品失败：议价流程未完成")
+            return False
+        return click_buy_button()
     if full_boatload:
         logger.info("已满载但购物车为空，进入下一步")
         return True
@@ -460,14 +459,47 @@ def click_bargain_button(num=0, max_attempts=6):
     return False
 
 
-def click_buy_button():
-    start = time.time()
-    while time.time() - start < 10:
-        input_tap((1056, 647))
-        time.sleep(1)
-        image = screenshot()
-        bgr = image.get_bgr((1177, 459), offset=5)
-        logger.debug(f"购买物品界面颜色检查: {bgr}")
-        if bgr != [2, 133, 253] and bgr != [251, 253, 253]:
+_BUY_SETTLEMENT_REGION = ((100, 480), (1180, 610))
+
+
+def _buy_settlement_texts() -> List[str]:
+    results = predict(
+        screenshot_image(),
+        cropped_pos1=_BUY_SETTLEMENT_REGION[0],
+        cropped_pos2=_BUY_SETTLEMENT_REGION[1],
+    )
+    return [str(item.get("text", "")) for item in results]
+
+
+def _is_buy_settlement_visible() -> bool:
+    """Recognize the buy settlement panel from its body only.
+
+    This avoids the old buy-button colour loop and does not OCR the full page.
+    """
+    texts = _buy_settlement_texts()
+    if any("买入结算报告" in text for text in texts):
+        return True
+    has_tax = any("纳税" in text or "税额" in text for text in texts)
+    has_total = any("买入总价" in text for text in texts)
+    return has_tax and has_total
+
+
+def _close_buy_settlement() -> None:
+    """Dismiss a confirmed buy settlement before leaving the exchange."""
+    input_tap((896, 676))
+    time.sleep(0.5)
+    if _is_buy_settlement_visible():
+        input_tap((896, 676))
+
+
+def click_buy_button() -> bool:
+    """Click buy once and wait for the bounded buy-settlement transition."""
+    input_tap((1056, 647))
+    for wait_seconds in (1.1, 0.9):
+        time.sleep(wait_seconds)
+        if _is_buy_settlement_visible():
+            logger.info("[买货] 检测到买入结算报告，购买成功")
+            _close_buy_settlement()
             return True
+    logger.error("[买货] 未检测到买入结算报告，无法确认购买成功")
     return False

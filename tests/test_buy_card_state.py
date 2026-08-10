@@ -123,6 +123,53 @@ class BuyCardStateTests(unittest.TestCase):
         self.assertEqual(buy_good.call_args_list[0].args[0], "黑毛牛排")
         self.assertEqual(buy_good.call_args_list[1].args[0], "黑毛牛排")
 
+    def test_buy_settlement_visible_by_title_or_tax_and_total(self):
+        with patch(
+            "resonance.solvers.buy._buy_settlement_texts", return_value=["买入结算报告"]
+        ):
+            self.assertTrue(buy._is_buy_settlement_visible())
+        with patch(
+            "resonance.solvers.buy._buy_settlement_texts", return_value=["纳税", "买入总价"]
+        ):
+            self.assertTrue(buy._is_buy_settlement_visible())
+
+    def test_buy_first_settlement_check_confirms_and_closes_once(self):
+        with patch(
+            "resonance.solvers.buy._is_buy_settlement_visible", side_effect=[True, False]
+        ), patch("resonance.solvers.buy.input_tap") as tap, patch(
+            "resonance.solvers.buy.time.sleep"
+        ):
+            self.assertTrue(buy.click_buy_button())
+
+        self.assertEqual(tap.call_args_list, [
+            unittest.mock.call((1056, 647)),
+            unittest.mock.call((896, 676)),
+        ])
+
+    def test_buy_second_settlement_check_closes_twice_only_when_still_visible(self):
+        with patch(
+            "resonance.solvers.buy._is_buy_settlement_visible", side_effect=[False, True, True]
+        ), patch("resonance.solvers.buy.input_tap") as tap, patch(
+            "resonance.solvers.buy.time.sleep"
+        ):
+            self.assertTrue(buy.click_buy_button())
+
+        self.assertEqual(tap.call_args_list, [
+            unittest.mock.call((1056, 647)),
+            unittest.mock.call((896, 676)),
+            unittest.mock.call((896, 676)),
+        ])
+
+    def test_buy_without_settlement_fails_without_retrying_buy_button(self):
+        with patch(
+            "resonance.solvers.buy._is_buy_settlement_visible", return_value=False
+        ), patch("resonance.solvers.buy.input_tap") as tap, patch(
+            "resonance.solvers.buy.time.sleep"
+        ):
+            self.assertFalse(buy.click_buy_button())
+
+        tap.assert_called_once_with((1056, 647))
+
 
 if __name__ == "__main__":
     unittest.main()
