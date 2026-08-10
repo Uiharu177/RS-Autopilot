@@ -14,6 +14,16 @@
 - 视觉：ONNX PaddleOCR / OpenCV 模板匹配
 - 详细架构见 docs/architecture.md
 
+## 买卖模块约束
+
+- `purchase.py` 是实际买货实现，负责商品选择、议价、买入确认和买入结算页关闭。
+- `sale.py` 是实际卖货实现，负责空车保护、议价、卖出确认和卖出结算页关闭。
+- `exchange.py` 只负责交易所页面定位、进入、页签切换和离开。
+- `buy.py` 与 `sell.py` 仅保留旧导入路径的兼容转发，不得恢复业务实现。
+- 买入、卖出按钮均只允许一次确认点击；不能用单像素颜色作为成功的唯一依据。
+- 买卖结算页必须在 `purchase.py` / `sale.py` 内确认并关闭；修改前先阅读 `docs/single-trade-flow.md`。
+- 内部模块重构不得改变 REST API、WebSocket 消息、前端协议、配置字段或批处理入口。
+
 ## 安装步骤
 
 1. 安装 Python 依赖：
