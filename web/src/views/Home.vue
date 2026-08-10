@@ -104,6 +104,9 @@ const businessConfig = ref({ buyCity: '', sellCity: '', buyCount: 0, loopCities:
 let ws: WebSocket | null = null
 let wsReconnectTimer: ReturnType<typeof setTimeout> | null = null
 let wsReconnectDelay = 3000
+let pendingSnapshot: Blob | null = null
+let snapshotFrameScheduled = false
+let logSyncInFlight = false
 
 const stats = computed(() => [
   { label: '运行阶段', value: runtime.tradePhaseText, icon: LayersOutline, color: 'var(--primary)' },
@@ -130,6 +133,20 @@ async function refresh() {
   loading.value = true
   await Promise.all([runtime.fetchStatus(), runtime.fetchScene()])
   loading.value = false
+}
+
+async function syncLogTail() {
+  if (logSyncInFlight) return
+  logSyncInFlight = true
+  try {
+    const res = await api.debug.recentLogs(200)
+    runtime.replaceLogPayload(res.data)
+  } catch {
+    // The WebSocket continues to provide live logs when the HTTP backfill is
+    // temporarily unavailable.  A later visibility/focus event retries it.
+  } finally {
+    logSyncInFlight = false
+  }
 }
 
 async function loadBusinessConfig() {
@@ -186,13 +203,13 @@ function connectWs() {
   ws.onopen = () => {
     wsConnected.value = true
     wsReconnectDelay = 3000
-    ws?.send(JSON.stringify({ log: true, sc: true }))
+    updateWsSubscription()
+    void syncLogTail()
   }
 
   ws.onmessage = (event) => {
     if (event.data instanceof Blob && autoSnapshot.value) {
-      if (wsSnapshotUrl.value) URL.revokeObjectURL(wsSnapshotUrl.value)
-      wsSnapshotUrl.value = URL.createObjectURL(event.data)
+      queueSnapshotRender(event.data)
     } else {
       try {
         const msg = JSON.parse(event.data)
@@ -218,6 +235,25 @@ function connectWs() {
   ws.onerror = () => { ws?.close() }
 }
 
+function queueSnapshotRender(blob: Blob) {
+  pendingSnapshot = blob
+  if (snapshotFrameScheduled) return
+  snapshotFrameScheduled = true
+  requestAnimationFrame(() => {
+    snapshotFrameScheduled = false
+    const latest = pendingSnapshot
+    pendingSnapshot = null
+    if (!latest || !autoSnapshot.value) return
+    if (wsSnapshotUrl.value) URL.revokeObjectURL(wsSnapshotUrl.value)
+    wsSnapshotUrl.value = URL.createObjectURL(latest)
+  })
+}
+
+function updateWsSubscription() {
+  if (ws?.readyState !== WebSocket.OPEN) return
+  ws.send(JSON.stringify({ log: true, sc: autoSnapshot.value }))
+}
+
 function scheduleReconnect() {
   if (wsReconnectTimer) return
   wsReconnectTimer = setTimeout(() => {
@@ -227,21 +263,35 @@ function scheduleReconnect() {
   }, wsReconnectDelay)
 }
 
+function resumeForegroundUpdates() {
+  if (document.hidden) return
+  void syncLogTail()
+  void refresh()
+  connectWs()
+}
+
 onMounted(() => {
   refresh()
   loadBusinessConfig()
   const timer = setInterval(refresh, 15000)
   connectWs()
+  document.addEventListener('visibilitychange', resumeForegroundUpdates)
+  window.addEventListener('focus', resumeForegroundUpdates)
   onUnmounted(() => {
     clearInterval(timer)
+    document.removeEventListener('visibilitychange', resumeForegroundUpdates)
+    window.removeEventListener('focus', resumeForegroundUpdates)
     if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null }
     if (ws) { ws.onclose = null; ws.close(); ws = null }
+    pendingSnapshot = null
     if (wsSnapshotUrl.value) { URL.revokeObjectURL(wsSnapshotUrl.value); wsSnapshotUrl.value = '' }
   })
 })
 
 watch(autoSnapshot, v => {
   localStorage.setItem('autoSnapshot', String(v))
+  updateWsSubscription()
+  pendingSnapshot = null
   if (!v && wsSnapshotUrl.value) {
     URL.revokeObjectURL(wsSnapshotUrl.value)
     wsSnapshotUrl.value = ''

@@ -22,12 +22,12 @@ const SCENE_MAP: Record<string, SceneInfo> = {
   },
   EXCHANGE_BUY: {
     label: '交易所买入页',
-    description: '包含全部买入、预计买入、买入总价、DISPLAY 等标记。',
+    description: '包含全部买入、预计买入、买入总价等买入页专属标记。',
     type: 'success',
   },
   EXCHANGE_SELL: {
     label: '交易所卖出页',
-    description: '包含全部卖出、预计卖出、卖出总价、货舱、WAREHOUSE 等标记。',
+    description: '包含全部卖出、预计卖出、卖出总价、抬价幅度等卖出页专属标记。',
     type: 'success',
   },
   STATION_LIST: {

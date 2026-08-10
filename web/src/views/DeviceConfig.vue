@@ -265,10 +265,18 @@ async function autoSelectScreenshot() {
 async function disconnect() {
   statusMessage.value = ''
   try {
-    await api.device.connect(0)
-    message.success('已断开')
-  } catch {}
-  actualMethod.value = ''
+    const res = await api.device.disconnect()
+    if (res.data.success !== false) {
+      actualMethod.value = ''
+      statusType.value = 'success'
+      statusMessage.value = '已断开设备连接'
+      message.success(statusMessage.value)
+    } else {
+      message.error(res.data.error || '断开失败')
+    }
+  } catch (e) {
+    message.error(getErrorMessage(e, '断开设备失败'))
+  }
 }
 
 async function startGame() {

@@ -24,6 +24,8 @@ from resonance.device.device import (
     launch_emulator,
     start_game,
 )
+from resonance.device import device as device_state
+from resonance.utils.exceptions import StopExecution
 from resonance.model import app
 from resonance.scene.recognizer import Recognizer
 from resonance.scene.scene import Scene
@@ -53,25 +55,44 @@ _BUSINESS_SCENES = {
 }
 
 
+def _sleep_or_stop(seconds: float) -> None:
+    deadline = time.perf_counter() + max(0.0, seconds)
+    while time.perf_counter() < deadline:
+        if device_state.STOP:
+            raise StopExecution()
+        time.sleep(min(0.5, deadline - time.perf_counter()))
+
+
 def boot_game(port: Optional[int] = None) -> Optional[str]:
     """万能启动入口：不管当前什么状态，返回当前城市名或 None。"""
-    launch_emulator(port or 0)
+    if device_state.STOP:
+        raise StopExecution()
+    if not launch_emulator(port or 0):
+        logger.error("模拟器未就绪，放弃启动跑商")
+        return None
 
     for attempt in range(1, 4):
-        if connect(port):
+        if device_state.STOP:
+            raise StopExecution()
+        # Only a fresh run may clear the stop flag. Retrying a failed device
+        # connection must not resurrect a run the user has already stopped.
+        if connect(port, reset_stop=False):
             break
         logger.warning(f"连接设备失败 ({attempt}/3)，重试...")
-        time.sleep(3)
+        _sleep_or_stop(3)
     else:
         logger.error("设备连接失败，放弃启动")
         return None
 
     for outer in range(3):
+        if device_state.STOP:
+            raise StopExecution()
         if not is_game_foreground():
             logger.info("游戏不在前台，启动游戏")
-            if not start_game():
+            start_result = start_game()
+            if not start_result.get("success"):
                 logger.error("启动游戏失败")
-                time.sleep(3)
+                _sleep_or_stop(3)
                 continue
             result = recover_to_expected(
                 RecoveryContext(
@@ -79,17 +100,18 @@ def boot_game(port: Optional[int] = None) -> Optional[str]:
                     expected_scenes={Scene.MAIN_MAP, Scene.CITY_VIEW},
                     allow_travel=True,
                     max_attempts=20,
+                    startup_wait_timeout=90.0,
                 )
             )
             if result.ok and result.state:
-                city = result.state.city or identify_city() or _resolve_fallback()
+                city = result.state.city or identify_city(assume_ready=True) or _resolve_fallback()
                 if city:
                     return city
             continue
 
         recog = Recognizer()
         if handle_startup_interruption(recog):
-            time.sleep(2)
+            _sleep_or_stop(2)
             continue
 
         scene = recog.scene
@@ -106,7 +128,7 @@ def boot_game(port: Optional[int] = None) -> Optional[str]:
         if scene in _BUSINESS_SCENES:
             logger.info(f"在业务页面 {scene.name}，返回首页")
             safe_go_home()
-            city = identify_city()
+            city = identify_city(assume_ready=True)
             if city:
                 logger.info(f"返回首页成功，当前城市: {city}")
                 return city
@@ -124,15 +146,16 @@ def boot_game(port: Optional[int] = None) -> Optional[str]:
                 expected_scenes={Scene.MAIN_MAP, Scene.CITY_VIEW},
                 allow_travel=True,
                 max_attempts=16,
+                startup_wait_timeout=90.0,
             )
         )
         if result.ok and result.state:
-            city = result.state.city or identify_city() or _resolve_fallback()
+            city = result.state.city or identify_city(assume_ready=True) or _resolve_fallback()
             if city:
                 logger.info(f"启动恢复完成，当前城市: {city}")
                 return city
 
-        time.sleep(3)
+        _sleep_or_stop(3)
 
     logger.error("启动失败：所有重试耗尽")
     return None

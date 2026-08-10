@@ -66,6 +66,22 @@ def _is_visit_city_text(text: str) -> bool:
     return "访问城市" in text or "访问地区" in text
 
 
+_VISIT_CITY_REGION = ((1060, 430), (1280, 570))
+
+
+def _visit_city_entry_from_ocr(results: list[dict]) -> Optional[Tuple[int, int]]:
+    for item in results:
+        text = item["text"]
+        if not _is_visit_city_text(text):
+            continue
+        position = item["position"]
+        center_x = int((position[0][0] + position[2][0]) / 2)
+        center_y = int((position[0][1] + position[2][1]) / 2)
+        if _is_visit_city_entry((center_x, center_y)):
+            return center_x, center_y
+    return None
+
+
 COARSE_RESERVE_PX = 0.0
 MAP_CENTER = (640, 360)
 WORLD_TO_SCREEN = 1.5
@@ -507,7 +523,7 @@ def swipe_to_target(from_city: str, to_city: str) -> bool:
         if _swipe_projection_to_center(anchor, to_city):
             return True
 
-    logger.info("当前画面未能通过投影确认目标，短搜索已知站点锚点")
+    logger.info("[导航] 目标未通过投影定位，开始有限范围锚点搜索")
     search_dirs = ((180, 0), (-180, 0), (0, 150), (0, -150), (180, 120), (-180, -120))
     for step, (dx, dy) in enumerate(search_dirs, start=1):
         wait_stopped(threshold=7100000)
@@ -515,7 +531,7 @@ def swipe_to_target(from_city: str, to_city: str) -> bool:
         target_loc = _find_station_template_on_map(to_city)
         if target_loc:
             if _is_target_central(target_loc):
-                logger.info(f"短搜索 {step}: {to_city} 已居中")
+                logger.info(f"[导航] 有限锚点搜索已定位目标：target={to_city}, step={step}")
                 return True
             _center_visible_target_once(target_loc)
             centered_loc = _find_station_template_on_map(to_city)
@@ -529,7 +545,7 @@ def swipe_to_target(from_city: str, to_city: str) -> bool:
                 return True
 
         x1, y1 = _clamp_map_swipe_start(MAP_CENTER[0] + dx, MAP_CENTER[1] + dy)
-        logger.info(f"短搜索 {step}: 未找到锚点，探测滑动")
+        logger.info(f"[导航] 有限锚点搜索未定位站点，执行探测滑动：step={step}")
         input_swipe_hold((x1, y1), MAP_CENTER, swipe_time=500, hold_ms=700)
         wait_stopped(threshold=7100000)
 
@@ -834,11 +850,11 @@ def _guard_for_navigation(step: str, target: str) -> bool:
         leave_exchange()
         scene = Recognizer().scene
         if scene in usable:
-            logger.info(f"导航入口交易所leave: target={target}, step={step}")
+            logger.info(f"[导航] 已离开交易所并返回可导航页面：target={target}, step={step}")
             return True
-        logger.warning(f"导航入口交易所leave后未到主界面, 进入重恢复: scene={scene.name}")
+        logger.warning(f"[导航] 离开交易所后未返回主界面，进入恢复流程：scene={scene.name}")
 
-    logger.info(f"导航入口需要恢复: target={target}, step={step}, scene={scene.name}")
+    logger.info(f"[导航] 当前页面不可用于导航，进入恢复流程：target={target}, step={step}, scene={scene.name}")
     return _recover_for_navigation(step, target)
 
 
@@ -847,14 +863,14 @@ def _guard_for_navigation(step: str, target: str) -> bool:
 # ═══════════════════════════════════════════════════════
 
 def click_station(name: str, cur_station: Optional[str] = None) -> TravelResult:
-    logger.info(f"点击站点 => {name}")
+    logger.info(f"[导航] 开始前往站点：target={name}")
     if not _guard_for_navigation("before_open_map", name):
         return TravelResult(ok=False)
 
     detail_recog = Recognizer()
     detail_ocr_results = detail_recog.ocr()
     if is_station_detail_open(name, ocr_results=detail_ocr_results):
-        logger.info(f"已在目标站点详情，直接点击前往目的地: {name}")
+        logger.info(f"[导航] 已打开目标站点详情，执行前往：target={name}")
         if not click_go_station(name, ocr_results=detail_ocr_results):
             _capture_navigation_snapshot("click_go_station_from_existing_detail_failed", name)
             return TravelResult(ok=False)
@@ -867,7 +883,7 @@ def click_station(name: str, cur_station: Optional[str] = None) -> TravelResult:
         station = cur_station
 
     if name == station:
-        logger.info("已在目标站点")
+        logger.info(f"[导航] 已位于目标站点，无需导航：target={name}")
         return TravelResult(ok=True, is_destine=True)
 
     if name not in STATION_NAME2PNG:
@@ -885,9 +901,9 @@ def click_station(name: str, cur_station: Optional[str] = None) -> TravelResult:
     map_ocr_results = map_recog.ocr()
     safe_loc = find_station_on_map(name, ocr_results=map_ocr_results)
     if safe_loc and _is_target_central(safe_loc):
-        logger.info(f"{name} 已居中，点击")
+        logger.info(f"[导航] 目标站点已居中，执行点击：target={name}")
     elif not center_station_on_map(name, ocr_results=map_ocr_results):
-        logger.info(f"{name} 未居中，锚点重定位")
+        logger.info(f"[导航] 目标站点未居中，执行锚点重定位：target={name}")
         if not refine_navigation_by_visible_stations(name):
             _capture_navigation_snapshot("station_not_found_after_swipe", name)
         map_ocr_results = None
@@ -900,7 +916,7 @@ def click_station(name: str, cur_station: Optional[str] = None) -> TravelResult:
             return TravelResult(ok=False)
         station = get_station(is_go_home=False)
         if name == station:
-            logger.info("纠错后已在目标站点")
+            logger.info(f"[导航] 恢复后已位于目标站点：target={name}")
             return TravelResult(ok=True, is_destine=True)
         if not open_map():
             _capture_navigation_snapshot("retry_open_map_failed", name)
@@ -926,13 +942,13 @@ def click_station(name: str, cur_station: Optional[str] = None) -> TravelResult:
 
 def open_station_detail(name: str, cur_station: Optional[str] = None) -> TravelResult:
     """Open target station detail without clicking 'go station'."""
-    logger.info(f"打开站点详情 => {name}")
+    logger.info(f"[导航] 打开站点详情：target={name}")
     if not _guard_for_navigation("before_open_station_detail", name):
         return TravelResult(ok=False)
 
     detail_recog = Recognizer()
     if is_station_detail_open(name, ocr_results=detail_recog.ocr()):
-        logger.info(f"已在目标站点详情，不点击前往目的地: {name}")
+        logger.info(f"[导航] 目标站点详情已打开，无需重复操作：target={name}")
         return TravelResult(ok=True)
 
     if not cur_station:
@@ -941,7 +957,7 @@ def open_station_detail(name: str, cur_station: Optional[str] = None) -> TravelR
         station = cur_station
 
     if name == station:
-        logger.info("目标站点就是当前站点，跳过站点详情导航")
+        logger.info(f"[导航] 目标站点即当前站点，跳过详情导航：target={name}")
         return TravelResult(ok=True, is_destine=True)
 
     if name not in STATION_NAME2PNG:
@@ -959,9 +975,9 @@ def open_station_detail(name: str, cur_station: Optional[str] = None) -> TravelR
     map_ocr_results = map_recog.ocr()
     safe_loc = find_station_on_map(name, ocr_results=map_ocr_results)
     if safe_loc and _is_target_central(safe_loc):
-        logger.info(f"{name} 已居中，点击")
+        logger.info(f"[导航] 目标站点已居中，执行点击：target={name}")
     elif not center_station_on_map(name, ocr_results=map_ocr_results):
-        logger.info(f"{name} 未居中，锚点重定位")
+        logger.info(f"[导航] 目标站点未居中，执行锚点重定位：target={name}")
         if not refine_navigation_by_visible_stations(name):
             _capture_navigation_snapshot("detail_station_not_found_after_swipe", name)
         map_ocr_results = None
@@ -976,7 +992,7 @@ def open_station_detail(name: str, cur_station: Optional[str] = None) -> TravelR
         _capture_navigation_snapshot("detail_not_open_after_tap", name)
         return TravelResult(ok=False)
 
-    logger.info(f"已打开站点详情，不点击前往目的地: {name}")
+    logger.info(f"[导航] 站点详情已打开，等待后续前往操作：target={name}")
     return TravelResult(ok=True)
 
 
@@ -990,7 +1006,7 @@ MAP_WAIT_TIME = 3000
 
 
 def travel_monitor() -> bool:
-    logger.info("进入行车监听（到站后自动回到主界面）")
+    logger.info("[行车] 已进入行驶状态，开始到站监测")
     recog = Recognizer()
     start = time.perf_counter()
     state = "pre_cruise"
@@ -1009,12 +1025,12 @@ def travel_monitor() -> bool:
             center_x = int((position[0][0] + position[2][0]) / 2)
             center_y = int((position[0][1] + position[2][1]) / 2)
             if _is_visit_city_entry((center_x, center_y)):
-                logger.info("检测到访问城市按钮，已到达目标城市主页面")
+                logger.info("[行车] 已进入目标城市主界面")
                 return True
 
         # 2.7.3 到站检测：从行车状态回到主地图即视为到站
         if state != "pre_cruise" and current == Scene.MAIN_MAP:
-            logger.info("检测到主地图，到站")
+            logger.info("[行车] 已检测到主地图，到站确认完成")
             return True
 
         # 2.7.4 崩溃检测
@@ -1030,26 +1046,26 @@ def travel_monitor() -> bool:
         # 状态转换
         if state == "pre_cruise":
             if current == Scene.TRAVEL_CRUISE:
-                logger.info("巡航开始")
+                logger.info("[行车] 已进入行驶状态，开始到站监测")
                 state = "cruise"
             elif current == Scene.TRAVEL_MAP:
-                logger.info("检测到行驶界面")
+                logger.info("[行车] 已检测到行驶界面")
                 state = "travel"
         elif state == "travel":
             pass
         elif state == "cruise":
             if current == Scene.BATTLE_CARD:
                 if not battle_ignored_logged:
-                    logger.info("行车监听忽略战斗场景，继续等待到站")
+                    logger.info("[行车] 检测到战斗场景，暂停到站判定并继续监测")
                     battle_ignored_logged = True
             else:
                 if battle_ignored_logged and current in (Scene.TRAVEL_CRUISE, Scene.TRAVEL_MAP):
-                    logger.info("战斗场景已恢复到行车状态")
+                    logger.info("[行车] 战斗场景已结束，恢复到站监测")
                 battle_ignored_logged = False
 
         time.sleep(CHECK_INTERVAL)
 
-    logger.error("行车超时")
+    logger.error("[行车] 到站监测超时，未检测到目标城市页面")
     return False
 
 
@@ -1072,7 +1088,7 @@ def get_station(is_go_home: bool = True) -> str:
             break
     if len(result) == 0:
         raise ValueError("未识别到当前城市")
-    logger.info(f"当前站点: {result[0]['text']}")
+    logger.info(f"[导航] 当前城市已识别：city={result[0]['text']}")
     if is_go_home:
         go_home()
     return result[0]["text"]
@@ -1080,10 +1096,27 @@ def get_station(is_go_home: bool = True) -> str:
 
 def go_city(max_attempts: int = 10) -> bool:
     for _ in range(max_attempts):
-        if Recognizer().scene == Scene.CITY_VIEW:
+        # The city-page badge is stable, unlike the individual outlets.  Check
+        # it before invoking the much slower full-screen OCR fallback.
+        image = screenshot()
+        if image.crop_image(
+            cropped_pos1=(25, 634), cropped_pos2=(99, 707)
+        ).match_template(RESOURCES_PATH / "scene/fame.png", 0.95):
             return True
 
-        results = predict(screenshot_image())
+        frame = screenshot_image()
+        entry = _visit_city_entry_from_ocr(
+            predict(frame, cropped_pos1=_VISIT_CITY_REGION[0], cropped_pos2=_VISIT_CITY_REGION[1])
+        )
+        if entry:
+            logger.info(f"[导航] 城市入口局部识别成功，执行点击：pos={entry}")
+            input_tap(entry)
+            time.sleep(2.0)
+            continue
+
+        # Fallback keeps the original safeguards for dynamic city layouts and
+        # task-detail overlays.  Do not replace it with a fixed coordinate.
+        results = predict(frame)
         outlet_hits = sum(
             1
             for item in results
@@ -1092,36 +1125,24 @@ def go_city(max_attempts: int = 10) -> bool:
         if outlet_hits >= 2:
             return True
 
-        image = screenshot()
-        is_city = image.crop_image(
-            cropped_pos1=(25, 634), cropped_pos2=(99, 707)
-        ).match_template(RESOURCES_PATH / "scene/fame.png", 0.95)
-        if is_city:
-            return True
-
         clicked = False
         has_task_detail = False
         for item in results:
             text = item["text"]
             if any(marker in text for marker in ("推荐等级", "累计", "迎战", "报酬", "任务")):
                 has_task_detail = True
-            if not _is_visit_city_text(text):
-                continue
-            position = item["position"]
-            center_x = int((position[0][0] + position[2][0]) / 2)
-            center_y = int((position[0][1] + position[2][1]) / 2)
-            if _is_visit_city_entry((center_x, center_y)):
-                pos = (center_x, center_y)
-                logger.info(f"检测到右下进城入口 {text}: {(center_x, center_y)}，点击 {pos}")
-                input_tap(pos)
-                clicked = True
-                break
+
+        entry = _visit_city_entry_from_ocr(results)
+        if entry:
+            logger.info(f"[导航] 城市入口局部识别未成功，已通过全屏识别定位：pos={entry}")
+            input_tap(entry)
+            clicked = True
         if not clicked:
-            logger.info("主界面未定位右下访问城市/访问地区入口")
+            logger.info("[导航] 主界面未定位城市入口")
         if not clicked and has_task_detail:
             input_back()
         time.sleep(2.0)
-    logger.error("进入城市界面失败")
+    logger.error("[导航] 进入城市界面失败，未确认城市页面状态")
     return False
 
 
@@ -1134,8 +1155,6 @@ def go_outlets(name: str) -> bool:
         )
 
     outlet_names = [name]
-    if name == "交易所":
-        outlet_names.extend(["平交易所", "亚交易所", "交易所-武林市集"])
 
     def try_ocr_click(log: bool = False):
         for outlet_name in outlet_names:
@@ -1145,7 +1164,7 @@ def go_outlets(name: str) -> bool:
 
     if not go_city():
         return False
-    logger.info(f"前往 => {name}")
+    logger.info(f"[导航] 进入地点：name={name}")
 
     input_swipe((900, 260), (420, 560), swipe_time=700)
     time.sleep(0.5)
@@ -1168,5 +1187,5 @@ def go_outlets(name: str) -> bool:
         time.sleep(0.5)
         if result := try_ocr_click(log=index == len(swipe_paths) - 1):
             return result
-    logger.error(f"未找到门店: {name}")
+    logger.error(f"[导航] 地点定位失败：name={name}")
     return False

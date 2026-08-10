@@ -10,7 +10,7 @@ import better_exceptions
 from loguru import logger
 
 from resonance.utils import wsdata
-from resonance.server.ws_state import ws_queue
+from resonance.server.ws_state import ws_log_queue
 
 from version import __version__
 
@@ -124,7 +124,7 @@ def ws_sink(message):
     msg = str(message).rstrip()
     log_lines.append(msg)
     log_lines[:] = log_lines[-100:]
-    ws_queue.put(wsdata.Log(msg))
+    ws_log_queue.put(wsdata.Log(msg))
 
 
 if not getattr(sys, "frozen", False):

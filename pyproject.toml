@@ -1,6 +1,6 @@
 [project]
 name = "RS-Autopilot"
-version = "0.1.0b0"
+version = "0.2.0b0"
 description = "雷索纳斯 (Resonance Solstice / HeiYue) game automation tool - Trade route solver"
 license = "MIT"
 requires-python = "<3.13,>=3.11"
@@ -35,3 +35,8 @@ resonance = "cli:main"
 [build-system]
 requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
+
+# Pre-release packaging fix: this repository includes non-Python assets and
+# runtime data; distribute only the application source package.
+[tool.setuptools.packages.find]
+include = ["resonance*"]

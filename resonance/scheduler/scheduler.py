@@ -16,7 +16,7 @@ from typing import Dict, List, Optional, Set
 from loguru import logger
 
 from resonance.scheduler.models import Task, TaskStatus, TaskType
-from resonance.utils.exceptions import StopExecution
+from resonance.utils.exceptions import StopExecution, TaskExecutionFailed
 
 
 class Scheduler:
@@ -196,6 +196,10 @@ class Scheduler:
             logger.info(f"任务已停止: {task.name}")
             task.status = TaskStatus.CANCELLED
             task.enabled = False
+        except TaskExecutionFailed as e:
+            logger.error(f"任务失败: {task.name} - {e}")
+            task.status = TaskStatus.FAILED
+            task.enabled = False
         except Exception as e:
             logger.exception(f"任务执行异常: {task.name} - {e}")
             task.status = TaskStatus.FAILED
@@ -204,7 +208,7 @@ class Scheduler:
 
         with self._lock:
             if self._running and not any(t.enabled for t in self._tasks.values()):
-                logger.info("所有任务已完成，自动停止调度器")
+                logger.info("没有可执行任务，自动停止调度器")
                 self._running = False
                 self._stop_event.set()
 

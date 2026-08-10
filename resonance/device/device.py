@@ -33,9 +33,36 @@ _device: IADB = ADB()
 _is_connected = False
 
 
+def _sleep_or_stop(seconds: float) -> None:
+    """Wait in short slices so a manual stop interrupts startup promptly."""
+    deadline = time.perf_counter() + max(0.0, seconds)
+    while time.perf_counter() < deadline:
+        if STOP:
+            raise StopExecution()
+        time.sleep(min(0.5, deadline - time.perf_counter()))
+
+
 def get_device() -> IADB:
     global _device
     return _device
+
+
+def is_connected() -> bool:
+    """Return the connection state instead of inferring it from a device object."""
+    return _is_connected
+
+
+def disconnect() -> bool:
+    """Close the active transport without stopping the game process."""
+    global _device, _is_connected, STOP
+    STOP = True
+    try:
+        _device.kill()
+    except Exception as e:
+        logger.warning(f"断开设备连接时关闭传输失败: {e}")
+    _device = ADB()
+    _is_connected = False
+    return True
 
 
 def launch_emulator(port: int = 0) -> bool:
@@ -72,7 +99,7 @@ def launch_emulator(port: int = 0) -> bool:
         subprocess.run([manager, "control", "--vmindex", str(index), "launch"],
                       capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW)
         for i in range(60):
-            time.sleep(2)
+            _sleep_or_stop(2)
             r = subprocess.run([manager, "info", "-v", "all"], capture_output=True,
                               creationflags=subprocess.CREATE_NO_WINDOW)
             if r.returncode == 0 and r.stdout:
@@ -86,6 +113,8 @@ def launch_emulator(port: int = 0) -> bool:
                     return True
         logger.error(f"模拟器实例 {index} 启动超时")
         return False
+    except StopExecution:
+        raise
     except Exception as e:
         logger.exception(f"启动模拟器失败: {e}")
         return False
@@ -299,8 +328,10 @@ def stop_game() -> Dict:
     try:
         logger.info(f"正在关闭游戏 {PACKAGE_NAME}...")
         adb.device.shell(f"am force-stop {PACKAGE_NAME}")
-        time.sleep(2)
+        _sleep_or_stop(2)
         return {"success": True, "action": "stop", "package": PACKAGE_NAME}
+    except StopExecution:
+        raise
     except Exception as e:
         logger.exception("关闭游戏失败")
         return {"success": False, "action": "stop", "error": str(e)}
@@ -317,7 +348,7 @@ def start_game() -> Dict:
         logger.info(f"正在启动游戏 {PACKAGE_NAME}...")
         output = adb.device.shell(f"monkey -p {PACKAGE_NAME} -c android.intent.category.LAUNCHER 1")
         logger.info(f"启动游戏输出: {str(output).strip()}")
-        time.sleep(3)
+        _sleep_or_stop(3)
         focus = _get_focus_from_connected_adb(adb)
         if focus and PACKAGE_NAME in focus:
             logger.info("游戏启动成功，已在前台")
@@ -331,6 +362,8 @@ def start_game() -> Dict:
             "output": output,
             "error": f"游戏启动后未进入前台: {focus or 'unknown'}",
         }
+    except StopExecution:
+        raise
     except Exception as e:
         logger.exception("启动游戏失败")
         return {"success": False, "action": "start", "error": str(e)}
@@ -472,15 +505,36 @@ def screenshot_image() -> cv.typing.MatLike:
     return screenshot
 
 
-def wait_stopped(threshold=7100000):
-    logger.info("等待图像静止")
-    while True:
-        gray1 = cv.cvtColor(screenshot_image(), cv.COLOR_BGR2GRAY)
-        time.sleep(0.5)
-        gray2 = cv.cvtColor(screenshot_image(), cv.COLOR_BGR2GRAY)
-        diff = cv.absdiff(gray1, gray2)
-        diff_sum: int = np.sum(diff)
-        logger.debug(f"画面差异 {diff_sum}")
-        if diff_sum < threshold:
-            break
-        time.sleep(1)
+def wait_stopped(
+    threshold: int = 7100000,
+    timeout: float = 3.0,
+    cropped_pos1: Tuple[int, int] = (196, 100),
+    cropped_pos2: Tuple[int, int] = (1084, 620),
+) -> bool:
+    """Wait briefly for stable map pixels, never forever for decorative UI.
+
+    This does not need to find a station.  It compares the whole safe map
+    viewport, excluding top bars and edge controls, so an empty map center
+    cannot alone declare a moving map stable.  Later OCR/template validation
+    remains responsible for deciding whether a target station exists.
+    """
+    logger.info(f"等待地图画面静止（上限 {timeout:.1f}s）")
+    deadline = time.perf_counter() + max(0.0, timeout)
+    viewport_area = max(1, (cropped_pos2[0] - cropped_pos1[0]) * (cropped_pos2[1] - cropped_pos1[1]))
+    full_area = 1280 * 720
+    # Existing callers pass the old full-screen threshold. Scale it to the
+    # viewport so cropping UI does not make the stability test too permissive.
+    effective_threshold = int(threshold * viewport_area / full_area)
+    while time.perf_counter() < deadline:
+        image1 = screenshot_image()[cropped_pos1[1]:cropped_pos2[1], cropped_pos1[0]:cropped_pos2[0]]
+        gray1 = cv.cvtColor(image1, cv.COLOR_BGR2GRAY)
+        _sleep_or_stop(min(0.3, max(0.0, deadline - time.perf_counter())))
+        image2 = screenshot_image()[cropped_pos1[1]:cropped_pos2[1], cropped_pos1[0]:cropped_pos2[0]]
+        gray2 = cv.cvtColor(image2, cv.COLOR_BGR2GRAY)
+        diff_sum: int = int(np.sum(cv.absdiff(gray1, gray2)))
+        logger.debug(f"地图区域画面差异 {diff_sum}")
+        if diff_sum < effective_threshold:
+            return True
+        _sleep_or_stop(min(0.3, max(0.0, deadline - time.perf_counter())))
+    logger.warning("地图画面未在上限内完全静止，继续导航校验")
+    return False

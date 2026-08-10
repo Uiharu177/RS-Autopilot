@@ -51,7 +51,7 @@ class Sc(WsMsg):
         import cv2
 
         img = cv2.resize(self.data, (480, 270), interpolation=cv2.INTER_AREA)
-        _, jpeg = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+        _, jpeg = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
         result = jpeg.tobytes()
 
         import resonance.utils.screenshot_logger as _sl

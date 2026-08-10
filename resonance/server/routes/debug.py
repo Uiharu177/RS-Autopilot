@@ -7,10 +7,31 @@ from resonance.debug.snapshot import DEBUG_DIR, capture_debug_snapshot
 from resonance.utils.screenshot_logger import SCREENSHOT_DIR
 from resonance.model.runtime import CITYS, app
 from resonance.utils.exceptions import StopExecution
+from resonance.debug.run_diagnostics import export_latest_run, latest_run
 
 debug_bp = Blueprint("debug", __name__)
 
 LOG_DIR = Path("logs")
+
+
+@debug_bp.route("/run-diagnostic/latest", methods=["GET"])
+def latest_run_diagnostic():
+    report = latest_run()
+    if report is None:
+        return jsonify({"success": True, "diagnostic": None})
+    return jsonify({"success": True, "diagnostic": report})
+
+
+@debug_bp.route("/run-diagnostic/latest/export", methods=["POST"])
+def export_run_diagnostic():
+    try:
+        archive = export_latest_run()
+        if archive is None:
+            return jsonify({"success": False, "error": "暂无可导出的运行诊断"}), 404
+        return send_file(archive, as_attachment=True, download_name=archive.name)
+    except Exception as e:
+        logger.exception("导出运行诊断失败")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 def _safe_log_path(filename: str) -> Path:

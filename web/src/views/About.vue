@@ -164,7 +164,11 @@
           <tr><td><n-text code>  device/</n-text></td><td>ADB / MuMu IPC 设备控制</td></tr>
           <tr><td><n-text code>  vision/</n-text></td><td>OCR 识别、模板匹配</td></tr>
           <tr><td><n-text code>  scene/</n-text></td><td>场景识别系统</td></tr>
-          <tr><td><n-text code>  solvers/</n-text></td><td>业务逻辑（跑商、导航、恢复）</td></tr>
+          <tr><td><n-text code>  solvers/</n-text></td><td>业务逻辑：跑商编排、交易所页面、买货、卖货、导航与恢复</td></tr>
+          <tr><td><n-text code>  solvers/trade.py</n-text></td><td>路线初始化、回合编排和城市间移动</td></tr>
+          <tr><td><n-text code>  solvers/exchange.py</n-text></td><td>交易所定位、进入、页签切换与离开</td></tr>
+          <tr><td><n-text code>  solvers/purchase.py</n-text></td><td>商品选择、进货书、买入确认与买入结算关闭</td></tr>
+          <tr><td><n-text code>  solvers/sale.py</n-text></td><td>卖货安全检查、卖出确认与卖出结算关闭</td></tr>
           <tr><td><n-text code>  scheduler/</n-text></td><td>后台任务调度</td></tr>
           <tr><td><n-text code>  server/</n-text></td><td>Flask API + WebSocket</td></tr>
           <tr><td><n-text code>web/</n-text></td><td>Vue 3 前端（RS自动驾驶控制台）</td></tr>

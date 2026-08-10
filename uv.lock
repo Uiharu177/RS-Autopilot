@@ -695,7 +695,7 @@ wheels = [
 
 [[package]]
 name = "rs-autopilot"
-version = "0.1.0b0"
+version = "0.2.0b0"
 source = { editable = "." }
 dependencies = [
     { name = "adb-shell" },

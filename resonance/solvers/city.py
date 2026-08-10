@@ -51,17 +51,23 @@ def _pick_city_name(results: List[dict]) -> Optional[str]:
     return None
 
 
-def identify_city_from_current_screen() -> Optional[str]:
+_MAIN_MAP_CITY_REGION = ((45, 70), (210, 165))
+
+
+def identify_city_from_current_screen(assume_ready: bool = False) -> Optional[str]:
     recog = _get_recognizer()
     invalid_scenes = (Scene.LOGIN, Scene.CRASH, Scene.LOADING, Scene.UNDEFINED)
-    if recog.scene in invalid_scenes:
+    if not assume_ready and recog.scene in invalid_scenes:
         logger.debug(f"跳过城市识别：当前场景 {recog.scene.name} 不包含城市信息")
         return None
     frame = recog.image
-    for pos1, pos2 in (
+    regions = [_MAIN_MAP_CITY_REGION]
+    if not assume_ready:
+        regions.extend([
         ((0, 430), (560, 710)),
         ((120, 120), (560, 710)),
-    ):
+        ])
+    for pos1, pos2 in regions:
         city = _pick_city_name(predict(frame, cropped_pos1=pos1, cropped_pos2=pos2))
         if city:
             logger.info(f"当前站点: {city}")
@@ -111,21 +117,23 @@ def _guard_entry(expected_scenes: Set, max_attempts: int = 12) -> bool:
 
 
 def is_city_view() -> bool:
+    image = screenshot()
+    if image.crop_image(
+        cropped_pos1=(25, 634), cropped_pos2=(99, 707)
+    ).match_template(RESOURCES_PATH / "scene/fame.png", 0.95):
+        return True
+
     results = predict(screenshot_image())
     outlet_hits = sum(
         1
         for item in results
         if any(marker in item["text"] for marker in CITY_OUTLET_MARKERS)
     )
-    if outlet_hits >= 2:
-        return True
-    return screenshot().crop_image(
-        cropped_pos1=(25, 634), cropped_pos2=(99, 707)
-    ).match_template(RESOURCES_PATH / "scene/fame.png", 0.95)
+    return outlet_hits >= 2
 
 
-def identify_city() -> str:
-    city = identify_city_from_current_screen()
+def identify_city(assume_ready: bool = False) -> str:
+    city = identify_city_from_current_screen(assume_ready=assume_ready)
     if city:
         return city
     input_tap((1170, 493))

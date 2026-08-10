@@ -211,7 +211,11 @@ cd ..
 | `  device/` | ADB / MuMu IPC 设备控制 |
 | `  vision/` | OCR 识别、模板匹配 |
 | `  scene/` | 场景识别系统 |
-| `  solvers/` | 业务逻辑（跑商、导航、恢复） |
+| `  solvers/` | 业务逻辑：跑商编排、交易所页面、买货、卖货、导航与恢复 |
+| `  solvers/trade.py` | 路线初始化、回合编排和城市间移动 |
+| `  solvers/exchange.py` | 交易所定位、进入、页签切换与离开 |
+| `  solvers/purchase.py` | 商品选择、进货书、买入确认与买入结算关闭 |
+| `  solvers/sale.py` | 卖货安全检查、卖出确认与卖出结算关闭 |
 | `  scheduler/` | 后台任务调度 |
 | `  server/` | Flask API + WebSocket |
 | `web/` | Vue 3 前端（RS自动驾驶控制台） |

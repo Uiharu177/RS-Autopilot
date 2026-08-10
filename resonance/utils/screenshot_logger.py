@@ -6,7 +6,7 @@ import cv2
 
 from resonance.utils import wsdata
 from resonance.utils.logger import logger
-from resonance.server.ws_state import ws_queue
+from resonance.server.ws_state import has_ws_subscribers, ws_screenshot_queue
 from resonance.utils.queue import QueueProxy
 
 SCREENSHOT_DIR = Path("logs") / "screenshots"
@@ -35,7 +35,10 @@ def save_screenshot(img):
     _, jpeg = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
     if jpeg is not None:
         sc_queue.put((jpeg.tobytes(), filename))
-    ws_queue.put(wsdata.Sc(img))
+    # Local screenshot logging is always retained. The browser preview is
+    # optional and lossy, so do not encode or queue it without a subscriber.
+    if has_ws_subscribers(wsdata.Sc.type):
+        ws_screenshot_queue.put(wsdata.Sc(img))
     logger.debug(f"[SC] {filename}")
 
 

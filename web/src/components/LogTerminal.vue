@@ -1,5 +1,5 @@
 <template>
-  <div class="log-terminal-wrapper">
+  <div class="log-terminal-wrapper" @wheel.capture="handleWheel">
     <n-log
       ref="logRef"
       class="n-log-inner"
@@ -13,7 +13,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useRuntimeStore } from '@/stores/runtime'
 
 const props = defineProps({
@@ -24,9 +24,28 @@ const props = defineProps({
 const runtime = useRuntimeStore()
 const logRef = ref(null)
 
-watch(() => props.autoScroll, (val) => {
-  if (!val) {
-    setTimeout(() => (logRef.value as any)?.scrollTo({ top: 99999 }), 0)
+function scrollToBottom() {
+  ;(logRef.value as any)?.scrollTo({ top: Number.MAX_SAFE_INTEGER })
+}
+
+async function keepPinnedToBottom() {
+  await nextTick()
+  // n-log updates its internal scrollbar after Vue's DOM update. Scheduling one
+  // frame later makes every incoming batch stay pinned, not just the toggle.
+  requestAnimationFrame(scrollToBottom)
+}
+
+function handleWheel(event: WheelEvent) {
+  if (!props.autoScroll) return
+  event.preventDefault()
+  scrollToBottom()
+}
+
+watch(() => props.autoScroll, async (enabled) => {
+  // Re-enable starts from the newest log line. Disabling leaves the current
+  // viewport in place so the user can inspect older lines without a jump.
+  if (enabled) {
+    await keepPinnedToBottom()
   }
 })
 
@@ -39,8 +58,14 @@ const displayLog = computed(() => {
   return content
 })
 
+watch(displayLog, () => {
+  if (props.autoScroll) {
+    void keepPinnedToBottom()
+  }
+}, { flush: 'post', immediate: true })
+
 defineExpose({
-  scrollToBottom: () => (logRef.value as any)?.scrollTo({ top: 99999 }),
+  scrollToBottom,
   clear: () => runtime.clearLog(),
 })
 </script>
@@ -69,10 +94,12 @@ defineExpose({
 }
 .n-log-inner .n-scrollbar-container {
   background: transparent;
-  padding: 12px 16px 0;
+  box-sizing: border-box;
+  padding: 12px 16px;
 }
 .n-log-inner .n-scrollbar-content {
-  padding-bottom: 4px;
+  box-sizing: border-box;
+  padding-bottom: 8px;
 }
 .n-log-inner .n-scrollbar-content pre {
   margin: 0;
@@ -83,22 +110,6 @@ defineExpose({
 }
 .n-log-inner .n-scrollbar-rail {
   --n-scrollbar-rail-color: transparent;
-}
-
-.n-log-inner.auto-scroll .n-scrollbar-container {
-  overflow: hidden;
-  position: relative;
-  padding: 12px 16px 0;
-}
-.n-log-inner.auto-scroll .n-scrollbar-container .n-scrollbar-content {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding-bottom: 4px;
-}
-.n-log-inner.auto-scroll .n-scrollbar-rail {
-  display: none;
 }
 
 .hljs-time {
