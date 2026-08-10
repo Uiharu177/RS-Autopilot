@@ -1,12 +1,13 @@
 [project]
 name = "RS-Autopilot"
-version = "beta0.1"
+version = "0.1.0b0"
 description = "雷索纳斯 (Resonance Solstice / HeiYue) game automation tool - Trade route solver"
 license = "MIT"
 requires-python = "<3.13,>=3.11"
 dependencies = [
     "Pillow==10.3.0",
     "loguru==0.7.2",
+    "better-exceptions>=0.3.3",
     "numpy==1.26.4",
     "opencv-python==4.9.0.80",
     "orjson>=3.10.0",
