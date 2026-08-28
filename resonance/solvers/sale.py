@@ -11,7 +11,7 @@ from loguru import logger
 from resonance.device.device import input_tap, screenshot_image
 from resonance.solvers.exchange import _current_exchange_texts, _is_exchange_tab
 from resonance.solvers.purchase import _read_bargain_percent, _wait_bargain_stable
-from resonance.vision.ocr import predict
+from resonance.vision.ocr import number_predict, predict
 
 
 _SALE_LOAD_REGION = ((1120, 370), (1255, 425))
@@ -21,7 +21,7 @@ _SALE_PAGE_MARKER_REGION = ((850, 80), (1250, 130))
 
 def _read_sale_load() -> Optional[int]:
     """Read the current sell-page cargo value from its current/capacity label."""
-    results = predict(
+    results = number_predict(
         screenshot_image(),
         cropped_pos1=_SALE_LOAD_REGION[0],
         cropped_pos2=_SALE_LOAD_REGION[1],
@@ -36,6 +36,51 @@ def _read_sale_load() -> Optional[int]:
             value = int(digits[::-1])
             logger.debug(f"[卖货] 载货量识别：value={value}, ocr={text}")
             return value
+
+    # OCR may merge the current value and capacity into one numeric token when
+    # the slash is faint or misread. Try a dynamic three/four-digit capacity
+    # suffix, and only accept an unambiguous current value within that capacity.
+    if text.isdigit():
+        # A lost or digit-like slash must still occupy one character.  Shorter
+        # text cannot safely distinguish current/capacity from a bare value.
+        if len(text) < 5:
+            logger.error(f"[卖货] 载货量 OCR 失败：ocr={text}")
+            return None
+
+        candidates: set[int] = set()
+        for capacity_length in (4, 3):
+            if len(text) <= capacity_length:
+                continue
+            value_text, capacity_text = text[:-capacity_length], text[-capacity_length:]
+            if capacity_text.startswith("0"):
+                continue
+            value = int(value_text)
+            capacity = int(capacity_text)
+            if 100 <= capacity <= 9999 and 0 <= value <= capacity:
+                candidates.add(value)
+
+            # A slash can be misread as the first digit of the capacity, e.g.
+            # ``627/1073`` -> ``62711073``. Strip that repeated boundary digit
+            # only after the normal split is invalid.
+            if (
+                value > capacity
+                and value_text[-1] == capacity_text[0]
+                and len(value_text) > 1
+            ):
+                fixed_value = int(value_text[:-1])
+                if 0 <= fixed_value <= capacity:
+                    candidates.add(fixed_value)
+
+        if len(candidates) == 1:
+            value = next(iter(candidates))
+            logger.debug(f"[卖货] 载货量动态容错解析：value={value}, ocr={text}")
+            return value
+        if len(candidates) > 1:
+            logger.error(
+                f"[卖货] 载货量 OCR 结果不唯一：candidates={sorted(candidates)}, ocr={text}"
+            )
+            return None
+
     logger.error(f"[卖货] 载货量 OCR 失败：ocr={text or 'empty'}")
     return None
 
