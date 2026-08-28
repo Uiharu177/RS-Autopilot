@@ -26,16 +26,22 @@
 
 ## 安装步骤
 
-1. 安装 Python 依赖：
-   pip install -r requirements.txt
+1. 检查 Python 版本，必须是 3.11 或 3.12（不支持 3.13+）。注意：Windows 商店的 Python 可能是空壳 stub，`python --version` 能输出但实际不可用。用 `python -c "print('ok')"` 验证。
 
-2. 安装前端依赖并构建：
+2. 创建虚拟环境并安装依赖：
+   python -m venv .venv
+   .venv\Scripts\pip install -r requirements.txt
+
+3. 安装前端依赖并构建：
    cd web
    npm install
    npm run build
    cd ..
 
-3. 一键启动（也可直接运行 start.bat）：
+4. 安装后验证：
+   .venv\Scripts\python -m compileall -q resonance tests
+
+5. 一键启动（也可直接运行 start.bat）：
    后端：python cli.py serve
    前端由后端托管，访问 http://localhost:15177
 ```
