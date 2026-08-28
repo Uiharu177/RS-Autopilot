@@ -69,6 +69,7 @@ def execute_purchase_flow(
 
     full_boatload = False
     invalid_page = False
+    selected_goods = False
 
     boatload = get_boatload()
     if boatload < 0:
@@ -93,13 +94,14 @@ def execute_purchase_flow(
                     device_state.STOP = True
                     return False
                 logger.debug("[买货] 资金检查通过")
+                selected_goods = True
                 if max_book > 0:
                     for _ in range(max_book):
                         _consume_one_book()
                 break
 
     def process_goods(good):
-        nonlocal full_boatload, invalid_page
+        nonlocal full_boatload, invalid_page, selected_goods
         boatload = get_boatload()
         if boatload < 0:
             if _dismiss_popup():
@@ -122,6 +124,7 @@ def execute_purchase_flow(
         if new_boatload == 0:
             logger.info("[买货] 载货量已满，停止遍历剩余商品")
             full_boatload = True
+            selected_goods = True
             return True
         if new_boatload == prev:
             logger.info(f"[买货] 载货量暂未变化，执行一次状态复核：before={prev}%, after={new_boatload}%")
@@ -131,6 +134,7 @@ def execute_purchase_flow(
             logger.info(f"[买货] 载货量未变化，跳过当前商品且不重复点击：before={prev}%, after={new_boatload}%")
         else:
             logger.info(f"[买货] 商品已加入购买清单：remaining_load={new_boatload}%")
+            selected_goods = True
         return True
 
     for good in primary_goods:
@@ -144,25 +148,17 @@ def execute_purchase_flow(
                 break
     if invalid_page:
         return False
-    if not is_purchase_list_empty():
+    if selected_goods:
         if not negotiate_purchase_price(num):
             logger.error("[买货] 购买确认失败：议价流程未完成")
             return False
         return confirm_purchase()
-    if full_boatload:
-        logger.info("[买货] 载货量已满且购买清单为空，结束商品选择")
-        return True
-    else:
-        logger.info("[买货] 商品列表扫描完成，未选中可购买商品")
-        return True
+    logger.info("[买货] 未通过载货量变化确认选中商品，结束商品选择")
+    return True
 
 
 def is_purchase_list_empty():
-    """Return whether the buy-page selection list is empty.
-
-    This is not a cargo-hold check: it verifies that this purchase has at
-    least one selected item before bargaining and pressing the buy button.
-    """
+    """Legacy compatibility helper; the active flow uses cargo-load change."""
     image = screenshot()
     image.crop_image((870, 132), (994, 205))
     bgr = image.get_bgr((898, 169))
@@ -288,48 +284,57 @@ def select_product_card(good: str, book: int, max_book: int, again: bool = False
     # 手指下 -> 上查看后面的商品。先用前者归顶，再用后者单向搜索到底。
     swipe_to_top = ((693, 314), (678, 558))
     swipe_toward_bottom = ((678, 558), (693, 314))
+    max_downward_swipes = 8
+    bottom_confirmations = 2
 
-    def try_current_page(data: list[dict]) -> Tuple[_GoodState, Optional[Tuple[int, int]]]:
+    def evaluate_page(data: list[dict]) -> Optional[bool]:
+        # One judgment per screen is enough here: an edge-cropped card is not
+        # a failure.  Continuing the swipe lets the next frame show it fully.
         state, pos = _find_good_state(data, good)
-        if state != "uncertain":
-            return state, pos
-
-        # A dialogue or a transient render can hide a card label for one OCR
-        # frame. Retry briefly, but never transform uncertainty into a click.
-        for retry in range(1, 3):
-            time.sleep(0.4)
-            state, pos = _find_good_state(_ocr_goods_list(), good)
-            if state in ("buyable", "locked"):
-                logger.info(f"[买货] 商品卡 OCR 复核：attempt={retry}/2, state={state}")
-                return state, pos
-            # A one-frame OCR miss cannot prove that the earlier incomplete
-            # card disappeared.  Keep the conservative uncertain state.
-        logger.warning(f"[买货] 商品状态信息不完整，跳过该商品并停止列表搜索：good={good}")
-        return "uncertain", pos
-
-    def click_if_buyable(data: list[dict]) -> Optional[bool]:
-        state, pos = try_current_page(data)
         if state == "locked":
             logger.info(f"[买货] 商品未解锁，跳过：good={good}")
             return False
-        if state == "uncertain":
-            return False
-        if state != "buyable" or pos is None:
-            return None
-        logger.info(f"[买货] 选择商品：good={good}, pos={pos}")
-        click(pos)
-        time.sleep(0.3)
-        return True
+        if state == "buyable" and pos is not None:
+            logger.info(f"[买货] 选择商品：good={good}, pos={pos}")
+            click(pos)
+            time.sleep(0.3)
+            return True
+        return None
 
-    # 先在当前页面找
+    def scan_downward(initial_data: list[dict]) -> Optional[bool]:
+        data = initial_data
+        last_signature = None
+        unchanged_count = 0
+
+        for _ in range(max_downward_swipes + 1):
+            result = evaluate_page(data)
+            if result is not None:
+                return result
+
+            signature = _goods_signature(data)
+            if signature == last_signature:
+                unchanged_count += 1
+                if unchanged_count >= bottom_confirmations:
+                    logger.info("[买货] 已到达商品列表末尾，结束正向搜索")
+                    return None
+            else:
+                unchanged_count = 0
+            last_signature = signature
+
+            input_swipe_hold(*swipe_toward_bottom, swipe_time=500, hold_ms=400)
+            time.sleep(0.8)
+            data = _ocr_goods_list()
+
+        logger.warning(f"[买货] 商品列表向下搜索达到滑动上限，停止：good={good}, limit={max_downward_swipes}")
+        return None
+
     data = _ocr_goods_list()
-    result = click_if_buyable(data)
+    result = scan_downward(data)
     if result is not None:
         return result, book
 
-    # 阶段1：先归位到列表顶部。手指上 -> 下会回到前面的卡片，
-    # 直到画面不再变化即表示已经到达顶部。归位阶段只移动，不点击，避免漏掉
-    # 顶部卡片或在中途改变购买顺序。
+    # 起始位置可能已经在列表中段。向下到底仍未命中时，只回顶补扫一次，
+    # 覆盖被跳过的前段商品，同时避免形成反复往返搜索。
     last_sig = _goods_signature(data)
     for _ in range(10):
         input_swipe_hold(*swipe_to_top, swipe_time=500, hold_ms=400)
@@ -344,28 +349,9 @@ def select_product_card(good: str, book: int, max_book: int, again: bool = False
         logger.info(f"[买货] 未能定位至商品列表顶部，停止搜索：good={good}")
         return False, book
 
-    # 阶段2：从顶部单向向下搜索。手指下 -> 上会查看后面的卡片，
-    # 移动，逐屏检查并在命中后立即点击，不再做第二次完整往返。
-    last_sig = None
-    same_count = 0
-    for _ in range(20):
-        result = click_if_buyable(data)
-        if result is not None:
-            return result, book
-
-        sig = _goods_signature(data)
-        if sig == last_sig:
-            same_count += 1
-            if same_count >= 2:
-                logger.info("[买货] 已到达商品列表末尾，结束搜索")
-                break
-        else:
-            same_count = 0
-        last_sig = sig
-
-        input_swipe_hold(*swipe_toward_bottom, swipe_time=500, hold_ms=400)
-        time.sleep(0.8)
-        data = _ocr_goods_list()
+    result = scan_downward(data)
+    if result is not None:
+        return result, book
 
     logger.info(f"[买货] 商品搜索完成，未找到目标商品：good={good}")
     return False, book
