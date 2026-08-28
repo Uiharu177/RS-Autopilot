@@ -5,6 +5,46 @@ from resonance.solvers import sale
 
 
 class SaleFlowTests(unittest.TestCase):
+    def test_sale_load_parses_dynamic_concatenated_value_and_capacity(self):
+        cases = {
+            "62711073": 627,
+            "250824": 250,
+            "12001500": 1200,
+        }
+        for text, expected in cases.items():
+            with self.subTest(text=text), patch(
+                "resonance.solvers.sale.number_predict", return_value=[{"text": text}]
+            ), patch("resonance.solvers.sale.screenshot_image"):
+                self.assertEqual(sale._read_sale_load(), expected)
+
+    def test_sale_load_rejects_invalid_concatenated_value_and_capacity(self):
+        for text in ("100001000", "9999", "not-a-number"):
+            with self.subTest(text=text), patch(
+                "resonance.solvers.sale.number_predict", return_value=[{"text": text}]
+            ), patch("resonance.solvers.sale.screenshot_image"):
+                self.assertIsNone(sale._read_sale_load())
+
+    def test_concatenated_sale_load_completes_sale_flow(self):
+        with patch(
+            "resonance.solvers.sale._is_sale_page_ready", return_value=True
+        ), patch(
+            "resonance.solvers.sale.predict",
+            side_effect=[[{"text": "62711073"}], [{"text": "62711073"}]],
+        ), patch(
+            "resonance.solvers.sale.number_predict",
+            side_effect=[[{"text": "62711073"}], [{"text": "62711073"}]],
+        ), patch("resonance.solvers.sale.screenshot_image"), patch(
+            "resonance.solvers.sale._select_all_for_sale"
+        ), patch(
+            "resonance.solvers.sale.negotiate_sale_price", return_value=True
+        ), patch(
+            "resonance.solvers.sale._is_sell_settlement_visible", return_value=False
+        ), patch("resonance.solvers.sale._is_sale_page_visible", return_value=True), patch(
+            "resonance.solvers.sale.input_tap"
+        ) as tap, patch("resonance.solvers.sale.time.sleep"):
+            self.assertTrue(sale.execute_sale_flow())
+        tap.assert_called_once_with((1056, 647))
+
     def test_empty_cargo_skips_all_sale_controls(self):
         with patch(
             "resonance.solvers.sale._is_sale_page_ready", return_value=True
