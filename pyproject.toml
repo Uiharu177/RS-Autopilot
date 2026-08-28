@@ -1,6 +1,6 @@
 [project]
 name = "RS-Autopilot"
-version = "0.2.1"
+version = "0.2.2"
 description = "雷索纳斯 (Resonance Solstice / HeiYue) game automation tool - Trade route solver"
 license = "MIT"
 requires-python = "<3.13,>=3.11"
