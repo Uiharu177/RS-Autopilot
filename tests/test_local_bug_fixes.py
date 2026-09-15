@@ -1,8 +1,6 @@
 import unittest
 from unittest.mock import patch
 
-from flask import Flask
-
 from resonance.device import device as device_state
 from resonance.scheduler.models import Task, TaskStatus
 from resonance.scheduler.scheduler import Scheduler
@@ -34,11 +32,10 @@ class BusinessRouteValidationTests(unittest.TestCase):
 
 class DeviceRouteTests(unittest.TestCase):
     def setUp(self):
-        # Use an isolated app because Flask disallows blueprint registration
-        # after another test has served its first request on the shared app.
-        self.app = Flask(__name__)
+        self.app = flask_app
         self.app.testing = True
-        self.app.register_blueprint(device_bp, url_prefix="/api/device")
+        if "device" not in self.app.blueprints:
+            self.app.register_blueprint(device_bp, url_prefix="/api/device")
         self.client = self.app.test_client()
 
     def test_status_uses_explicit_connection_state(self):

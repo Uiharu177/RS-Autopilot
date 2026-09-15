@@ -386,8 +386,8 @@ def close_station_list(max_attempts: int = 4) -> bool:
     return Recognizer().scene in (Scene.MAIN_MAP, Scene.CITY_VIEW)
 
 
-def inspect_current_state() -> CurrentState:
-    recog = Recognizer()
+def inspect_current_state(recog: Optional[Recognizer] = None) -> CurrentState:
+    recog = recog or Recognizer()
     scene = recog.scene
     in_travel = scene in (Scene.TRAVEL_CRUISE, Scene.TRAVEL_MAP, Scene.BATTLE_CARD)
     city = identify_city() if scene == Scene.CITY_VIEW else None
@@ -425,7 +425,7 @@ def recover_to_expected(context: RecoveryContext) -> RecoveryResult:
             _interruptible_sleep(1.5)
             continue
 
-        state = inspect_current_state()
+        state = inspect_current_state(recog)
         logger.info(
             f"恢复: {context.step} [{attempt}/{context.max_attempts}] 场景={state.scene.name}"
         )

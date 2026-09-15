@@ -128,7 +128,7 @@ class PurchaseFlowTests(unittest.TestCase):
             self.assertTrue(purchase.execute_purchase_flow(["黑毛牛排", "行李箱包"], ["大龙虾"]))
         self.assertEqual(select_card.call_count, 2)
         self.assertEqual(select_card.call_args_list[0].args[0], "黑毛牛排")
-        self.assertEqual(select_card.call_args_list[1].args[0], "黑毛牛排")
+        self.assertEqual(select_card.call_args_list[1].args[0], "行李箱包")
         negotiate.assert_called_once_with(0)
         confirm.assert_called_once_with()
 

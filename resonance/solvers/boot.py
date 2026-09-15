@@ -100,7 +100,10 @@ def boot_game(port: Optional[int] = None) -> Optional[str]:
                     expected_scenes={Scene.MAIN_MAP, Scene.CITY_VIEW},
                     allow_travel=True,
                     max_attempts=20,
-                    startup_wait_timeout=90.0,
+                    # Resource updates may download for several minutes; keep
+                    # the overall startup deadline generous while allowing
+                    # scene changes to finish earlier.
+                    startup_wait_timeout=300.0,
                 )
             )
             if result.ok and result.state:
@@ -146,7 +149,7 @@ def boot_game(port: Optional[int] = None) -> Optional[str]:
                 expected_scenes={Scene.MAIN_MAP, Scene.CITY_VIEW},
                 allow_travel=True,
                 max_attempts=16,
-                startup_wait_timeout=90.0,
+                startup_wait_timeout=300.0,
             )
         )
         if result.ok and result.state:

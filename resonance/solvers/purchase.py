@@ -8,6 +8,7 @@
 """
 
 import time
+from pathlib import Path
 from typing import List, Literal, Optional, Tuple
 
 import cv2 as cv
@@ -18,6 +19,8 @@ from resonance.device import device as device_state
 from resonance.device.device import input_back, input_swipe_hold, input_tap, screenshot, screenshot_image
 from resonance.vision.ocr import predict
 from resonance.preset import click
+from resonance.model.config import config
+from resonance.vision.image import Image
 
 
 def execute_purchase_flow(
@@ -27,11 +30,36 @@ def execute_purchase_flow(
     max_book: int = 0,
 ):
     book_used = 0
+    back_templates = (
+        Path(__file__).resolve().parents[2] / "resources" / "mask" / "backdark.png",
+        Path(__file__).resolve().parents[2] / "resources" / "mask" / "backlight.png",
+    )
 
-    def _consume_one_book():
+    def _return_to_purchase_page() -> bool:
+        for attempt in range(2):
+            frame = screenshot_image()
+            matches = []
+            for template in back_templates:
+                if template.is_file():
+                    matches.append(Image(frame).crop_image((0, 0), (220, 150)).match_template(template, 0.90))
+            if matches:
+                match = max(matches, key=lambda result: result.score)
+                if match.status and 0 < match.loc[0] < 220 and 0 < match.loc[1] < 150:
+                    logger.info(f"[买货] 模板定位道具浮窗返回按钮：loc={match.loc}, score={match.score:.3f}")
+                    input_tap(match.loc)
+                    time.sleep(1.0)
+            texts = [item["text"] for item in predict(screenshot_image())]
+            markers = ("交易品", "货舱", "全部买入", "预计买入", "买入", "我要买")
+            if any(marker in text for text in texts for marker in markers):
+                logger.info("[买货] 已恢复商品购买页")
+                return True
+        logger.error(f"[买货] 无法恢复商品购买页：ocr={texts}")
+        return False
+
+    def _consume_one_book() -> bool:
         nonlocal book_used
         if book_used >= max_book:
-            return
+            return True
         book_used += 1
         logger.info(f"[买货] 使用进货书：count={book_used}/{max_book}")
         input_tap((1081, 100))
@@ -62,14 +90,18 @@ def execute_purchase_flow(
                         logger.info(f"[买货] 进货书确认弹窗已识别，执行确认：pos=({pcx},{pcy})")
                         input_tap((pcx, pcy))
                         time.sleep(2.0)
-                        return
+                        return True
                 time.sleep(0.5)
-        input_back()
-        time.sleep(1.5)
+        logger.warning("[买货] 进货书确认失败，开始恢复商品购买页")
+        if not _return_to_purchase_page():
+            return False
+        logger.warning("[买货] 进货书不可用或确认失败")
+        return False
 
     full_boatload = False
     invalid_page = False
     selected_goods = False
+    probed_good = None
 
     boatload = get_boatload()
     if boatload < 0:
@@ -95,9 +127,18 @@ def execute_purchase_flow(
                     return False
                 logger.debug("[买货] 资金检查通过")
                 selected_goods = True
+                probed_good = probe_good
                 if max_book > 0:
                     for _ in range(max_book):
-                        _consume_one_book()
+                        if not _consume_one_book():
+                            if get_boatload() < 0:
+                                logger.error("[买货] 进货书失败后仍未回到商品购买页，停止本次买货")
+                                return False
+                            if not config.global_config.continue_purchase_when_book_unavailable:
+                                logger.error("[买货] 进货书不足，按配置停止本次买货")
+                                return False
+                            logger.warning("[买货] 进货书不足，按配置继续普通买货流程")
+                            break
                 break
 
     def process_goods(good):
@@ -138,6 +179,9 @@ def execute_purchase_flow(
         return True
 
     for good in primary_goods:
+        if good == probed_good:
+            logger.info(f"[买货] 商品已在资金检查阶段选择，跳过重复点击：good={good}")
+            continue
         process_goods(good)
         if full_boatload or invalid_page:
             break

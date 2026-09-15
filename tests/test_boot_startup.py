@@ -51,7 +51,7 @@ class BootStartupTests(unittest.TestCase):
             self.assertIsNone(boot.boot_game())
         context = recover.call_args.args[0]
         self.assertEqual(context.expected_scenes, {Scene.MAIN_MAP, Scene.CITY_VIEW})
-        self.assertEqual(context.startup_wait_timeout, 90.0)
+        self.assertEqual(context.startup_wait_timeout, 300.0)
 
 
 if __name__ == "__main__":

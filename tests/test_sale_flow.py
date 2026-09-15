@@ -5,6 +5,41 @@ from resonance.solvers import sale
 
 
 class SaleFlowTests(unittest.TestCase):
+    def setUp(self):
+        self.template = sale._SALE_SLASH_TEMPLATE
+        sale._SALE_SLASH_TEMPLATE = None
+
+    def tearDown(self):
+        sale._SALE_SLASH_TEMPLATE = self.template
+
+    def test_template_match_splits_left_and_right_number_ocr(self):
+        class FakeImage:
+            def __init__(self): self.crops = []; self.ocr_values = iter(([{"text": "500"}], [{"text": "1073"}]))
+            def crop_image(self, first, second): self.crops.append((first, second)); return self
+            def match_template(self, template, threshold): return type("Match", (), {"status": True, "score": .95, "loc": (1180, 397)})()
+            def number_ocr(self): return next(self.ocr_values)
+        image = FakeImage()
+        sale._SALE_SLASH_TEMPLATE = type("Template", (), {"is_file": lambda self: True})()
+        with patch("resonance.solvers.sale.screenshot_image", return_value=object()), patch("resonance.solvers.sale.Image", side_effect=lambda frame: image):
+            self.assertEqual(sale._read_sale_load(), 500)
+        self.assertEqual(image.crops[1:], [((1135, 370), (1178, 425)), ((1182, 370), (1225, 425))])
+
+    def test_low_confidence_template_fails_before_ocr(self):
+        class FakeImage:
+            def crop_image(self, *args): return self
+            def match_template(self, *args): return type("Match", (), {"status": False, "score": .5, "loc": (1180, 397)})()
+        sale._SALE_SLASH_TEMPLATE = type("Template", (), {"is_file": lambda self: True})()
+        with patch("resonance.solvers.sale.screenshot_image", return_value=object()), patch("resonance.solvers.sale.Image", side_effect=lambda frame: FakeImage()):
+            self.assertIsNone(sale._read_sale_load())
+    def test_sale_load_parses_strict_slash_values(self):
+        for text, expected in (("1071/1073", 1071), ("0/1073", 0)):
+            with patch("resonance.solvers.sale.number_predict", return_value=[{"text": text}]), patch("resonance.solvers.sale.screenshot_image"):
+                self.assertEqual(sale._read_sale_load(), expected)
+
+    def test_sale_load_rejects_invalid_slash_values(self):
+        for text in ("01/1073", "010/1073", "abc/1073", "1071/073", "1074/1073"):
+            with patch("resonance.solvers.sale.number_predict", return_value=[{"text": text}]), patch("resonance.solvers.sale.screenshot_image"):
+                self.assertIsNone(sale._read_sale_load())
     def test_sale_load_parses_dynamic_concatenated_value_and_capacity(self):
         cases = {
             "62711073": 627,

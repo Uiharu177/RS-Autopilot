@@ -81,6 +81,8 @@ def launch_emulator(port: int = 0) -> bool:
         return False
     # Find instance index by port
     try:
+        started_at = time.perf_counter()
+        logger.info("[启动] 模拟器检查开始")
         r = subprocess.run([manager, "info", "-v", "all"], capture_output=True,
                           creationflags=subprocess.CREATE_NO_WINDOW)
         if r.returncode == 0 and r.stdout:
@@ -92,14 +94,15 @@ def launch_emulator(port: int = 0) -> bool:
                     target = idx
                     break
             if target is not None and info[target].get("player_state") == "start_finished":
-                logger.info(f"模拟器实例 {target} 已在运行")
+                logger.info(f"[启动] 模拟器已在运行：instance={target}, elapsed={(time.perf_counter()-started_at):.1f}s")
                 return True
         index = port - 16384 if port >= 16384 else cfg.device.index
         logger.info(f"启动模拟器实例 {index}...")
         subprocess.run([manager, "control", "--vmindex", str(index), "launch"],
                       capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW)
         for i in range(60):
-            _sleep_or_stop(2)
+            # Poll quickly while the state is changing, then back off once stable.
+            _sleep_or_stop(0.5 if i < 8 else 1.5)
             r = subprocess.run([manager, "info", "-v", "all"], capture_output=True,
                               creationflags=subprocess.CREATE_NO_WINDOW)
             if r.returncode == 0 and r.stdout:
@@ -109,7 +112,7 @@ def launch_emulator(port: int = 0) -> bool:
                 except (json.JSONDecodeError, UnicodeDecodeError):
                     continue
                 if info.get(str(index), {}).get("player_state") == "start_finished":
-                    logger.info(f"模拟器实例 {index} 启动完成 ({(i+1)*2}s)")
+                    logger.info(f"[启动] 模拟器启动完成：elapsed={(time.perf_counter()-started_at):.1f}s")
                     return True
         logger.error(f"模拟器实例 {index} 启动超时")
         return False
@@ -348,11 +351,15 @@ def start_game() -> Dict:
         logger.info(f"正在启动游戏 {PACKAGE_NAME}...")
         output = adb.device.shell(f"monkey -p {PACKAGE_NAME} -c android.intent.category.LAUNCHER 1")
         logger.info(f"启动游戏输出: {str(output).strip()}")
-        _sleep_or_stop(3)
-        focus = _get_focus_from_connected_adb(adb)
-        if focus and PACKAGE_NAME in focus:
-            logger.info("游戏启动成功，已在前台")
-            return {"success": True, "action": "start", "package": PACKAGE_NAME, "focus": focus, "output": output}
+        started_at = time.perf_counter()
+        deadline = started_at + 15.0
+        focus = None
+        while time.perf_counter() < deadline:
+            focus = _get_focus_from_connected_adb(adb)
+            if focus and PACKAGE_NAME in focus:
+                logger.info(f"[启动] 游戏进入前台：elapsed={(time.perf_counter()-started_at):.1f}s")
+                return {"success": True, "action": "start", "package": PACKAGE_NAME, "focus": focus, "output": output}
+            _sleep_or_stop(0.5)
         logger.error(f"游戏启动后未进入前台，当前前台: {focus or 'unknown'}")
         return {
             "success": False,

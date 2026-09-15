@@ -4,38 +4,107 @@
 """
 
 import time
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 from loguru import logger
 
-from resonance.device.device import input_tap, screenshot_image
+from resonance.device.device import input_tap, screenshot, screenshot_image
 from resonance.solvers.exchange import _current_exchange_texts, _is_exchange_tab
 from resonance.solvers.purchase import _read_bargain_percent, _wait_bargain_stable
 from resonance.vision.ocr import number_predict, predict
+from resonance.vision.image import Image
 
 
 _SALE_LOAD_REGION = ((1120, 370), (1255, 425))
 _SALE_SETTLEMENT_REGION = ((100, 480), (1180, 610))
 _SALE_PAGE_MARKER_REGION = ((850, 80), (1250, 130))
+_SALE_SLASH_TEMPLATE = Path(__file__).resolve().parents[2] / "resources" / "mask" / "slash.png"
+_SALE_SLASH_THRESHOLD = 0.90
+_SALE_DIGIT_WINDOW = 45
+
+
+def _valid_load(current_text: str, capacity_text: str) -> Optional[int]:
+    if not current_text.isdigit() or not capacity_text.isdigit():
+        return None
+    if len(current_text) > 1 and current_text.startswith("0"):
+        return None
+    if len(capacity_text) not in (3, 4) or capacity_text.startswith("0"):
+        return None
+    current, capacity = int(current_text), int(capacity_text)
+    if not 100 <= capacity <= 9999 or current > capacity:
+        return None
+    return current
+
+
+def _parse_sale_load_text(text: str) -> Optional[int]:
+    text = "".join(text.split())
+    if "/" in text:
+        if text.count("/") != 1:
+            return None
+        left, right = text.split("/")
+        return _valid_load(left, right)
+    if not text.isdigit() or len(text) < 5:
+        return None
+    candidates = set()
+    for capacity_length in (3, 4):
+        if len(text) > capacity_length:
+            value = _valid_load(text[:-capacity_length], text[-capacity_length:])
+            if value is not None:
+                candidates.add(value)
+    for capacity_length in (3, 4):
+        if len(text) > capacity_length + 1:
+            value_text, capacity_text = text[:-capacity_length], text[-capacity_length:]
+            if value_text[-1] == capacity_text[0]:
+                value = _valid_load(value_text[:-1], capacity_text)
+                if value is not None:
+                    candidates.add(value)
+    return next(iter(candidates)) if len(candidates) == 1 else None
 
 
 def _read_sale_load() -> Optional[int]:
     """Read the current sell-page cargo value from its current/capacity label."""
+    has_template = _SALE_SLASH_TEMPLATE is not None and (
+        not isinstance(_SALE_SLASH_TEMPLATE, Path) or _SALE_SLASH_TEMPLATE.is_file()
+    )
+    frame = screenshot_image()
+    if has_template:
+        match = Image(frame).crop_image(*_SALE_LOAD_REGION).match_template(_SALE_SLASH_TEMPLATE, _SALE_SLASH_THRESHOLD)
+        x, y = match.loc
+        if not match.status or match.score < _SALE_SLASH_THRESHOLD or not (
+            _SALE_LOAD_REGION[0][0] < x < _SALE_LOAD_REGION[1][0]
+            and _SALE_LOAD_REGION[0][1] < y < _SALE_LOAD_REGION[1][1]
+        ):
+            logger.error(f"[卖货] 斜杠模板匹配无效：score={match.score}, loc={match.loc}")
+            return None
+        left = Image(frame).crop_image(
+            (max(_SALE_LOAD_REGION[0][0], x - _SALE_DIGIT_WINDOW), _SALE_LOAD_REGION[0][1]),
+            (x - 2, _SALE_LOAD_REGION[1][1]),
+        ).number_ocr()
+        right = Image(frame).crop_image(
+            (x + 2, _SALE_LOAD_REGION[0][1]),
+            (min(_SALE_LOAD_REGION[1][0], x + _SALE_DIGIT_WINDOW), _SALE_LOAD_REGION[1][1]),
+        ).number_ocr()
+        if len(left) != 1 or len(right) != 1:
+            logger.error(f"[卖货] 左右载货量 OCR 候选不唯一：left={left}, right={right}")
+            return None
+        left_text = "".join(str(left[0].get("text", "")).split())
+        right_text = "".join(str(right[0].get("text", "")).split())
+        value = _valid_load(left_text, right_text)
+        if value is None:
+            logger.error(f"[卖货] 左右载货量 OCR 校验失败：left={left_text!r}, right={right_text!r}")
+        else:
+            logger.info(f"[卖货] 模板分区识别载货量：current={value}, capacity={right_text}, slash={match.loc}, score={match.score:.3f}")
+        return value
     results = number_predict(
-        screenshot_image(),
+        frame,
         cropped_pos1=_SALE_LOAD_REGION[0],
         cropped_pos2=_SALE_LOAD_REGION[1],
     )
-    text = "".join(str(item.get("text", "")).replace(" ", "") for item in results)
-    for index, char in enumerate(text):
-        if char != "/":
-            continue
-        left = text[:index]
-        digits = "".join(char for char in reversed(left) if char.isdigit())
-        if digits:
-            value = int(digits[::-1])
-            logger.debug(f"[卖货] 载货量识别：value={value}, ocr={text}")
-            return value
+    text = "".join(str(item.get("text", "")) for item in results)
+    value = _parse_sale_load_text(text)
+    if value is not None:
+        return value
 
     # OCR may merge the current value and capacity into one numeric token when
     # the slash is faint or misread. Try a dynamic three/four-digit capacity
